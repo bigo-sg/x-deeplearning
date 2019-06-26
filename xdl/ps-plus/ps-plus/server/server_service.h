@@ -35,6 +35,7 @@ class ServerService {
                 std::string streaming_dense_model_addr,
                 std::string streaming_sparse_model_addr,
                 std::string streaming_hash_model_addr,
+                uint16_t emb_fea_lifetime,
                 bool bind_cores = false);
   Status Init();
   ~ServerService();
@@ -69,6 +70,7 @@ class ServerService {
   std::string streaming_dense_model_addr_;
   std::string streaming_sparse_model_addr_;
   std::string streaming_hash_model_addr_;
+  uint16_t emb_fea_lifetime_;
 };
 
 }

@@ -36,6 +36,11 @@ class Variable {
     std::unique_ptr<Tensor> tensor;
     SlotJoiner joiner;
   };
+  struct FeatureStats {
+    uint16_t unseen_times;
+    float show;
+    float click;
+  };
 
   Variable(Tensor* data, Data* slicer)
     : data_(data), slicer_(slicer) {}
@@ -56,10 +61,14 @@ class Variable {
   Status ReShapeId(size_t id);
   void ClearIds(const std::vector<size_t>& id);
 
+  void UpdateStatsInfo(int64_t raw_id, int16_t unseen_times, float show_delta, float clk_delta);
+
   // Used for Save and Restore
   const std::unordered_map<std::string, Slot>& GetSlots() { return slots_; }
   void SetSlots(std::unordered_map<std::string, Slot>&& slots) { slots_ = std::move(slots); }
 
+  std::unordered_map<int64_t, FeatureStats>& GetStats() { return stats_; }
+  void SetStats(std::unordered_map<int64_t, FeatureStats>&& stats) { stats_ = std::move(stats); }
  private:
   // There is 3 state in Variable Processor:
   // <variable_lock_.read, slots_lock_.read>
@@ -67,10 +76,12 @@ class Variable {
   // <variable_lock_.write, None>
   QRWLock variable_lock_; // Guard variable
   QRWLock slots_lock_; // Guard the slots unordered_map
+  QRWLock stats_lock_; // Guard the stats unordered_map
 
   std::unique_ptr<Tensor> data_;
   std::unique_ptr<Data> slicer_;
   std::unordered_map<std::string, Slot> slots_;
+  std::unordered_map<int64_t, FeatureStats> stats_;
 };
 
 }

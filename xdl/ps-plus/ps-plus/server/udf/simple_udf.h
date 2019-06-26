@@ -18,6 +18,7 @@ limitations under the License.
 
 #include "ps-plus/server/udf.h"
 #include "ps-plus/server/udf/simple_udf_helper.h"
+#include "ps-plus/server/udf/sparse_fea_stats.h"
 
 namespace ps {
 namespace server {

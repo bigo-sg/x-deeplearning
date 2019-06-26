@@ -139,6 +139,15 @@ Status CheckpointUtils::SaveVariables(
     VariableStruct vs;
     PS_CHECK_STATUS(VariableToStruct(item.second, &vs));
     PS_CHECK_STATUS(SaveVariable(iter->first, part, &vs));
+
+    if (vs.stats.size()) {
+      LOG(INFO) << "SaveVariable:" << iter->first << ", stats size: " << vs.stats.size() << ", type: " << vs.type
+                << ", raw_id: " << vs.stats.begin()->first
+                << ", unseen_times: " << vs.stats.begin()->second.unseen_times
+                << ", show: " << vs.stats.begin()->second.show << ", click: " << vs.stats.begin()->second.click;
+    } else {
+      LOG(INFO) << "SaveVariable, stats size: " << vs.stats.size()  << ", type: " << vs.type;
+    }
   }
   return Status::Ok();
 }
@@ -253,9 +262,14 @@ Status CheckpointUtils::MergeLoadVariable(const std::string& var_name, const Var
           var->slots[iter.first] = Variable::Slot{.tensor = std::unique_ptr<Tensor>(new Tensor(t->Type(), s, t->GetInitializer()->Clone(), true)), .joiner = iter.second.joiner};
       }
   }
+
+  for (const auto& iter : variables[0]->variable.stats) {
+      var->stats[iter.first] = Variable::FeatureStats({iter.second.unseen_times, iter.second.show, iter.second.click});
+  }
+
   time_end = clock();
 
-  time_start = clock();  
+  time_start = clock();
   std::unique_ptr<Data> slicer;
   std::unique_ptr<WrapperData<HashMap>> xslicer(new WrapperData<HashMap>(max_size));
   std::vector<int64_t> ids, reused_ids;
@@ -270,6 +284,11 @@ Status CheckpointUtils::MergeLoadVariable(const std::string& var_name, const Var
         keys.push_back(item.y);
         item_ids.push_back(item.id);
       }
+
+      if (var->stats.find(item.id) == var->stats.end()) {
+          var->stats[item.id] = Variable::FeatureStats({0, 0, 0});
+      }
+
       if (keys.size() > 400000 || index == hash_slicer.items.size()-1) {
         if (xslicer->Internal().Get(&keys[0], keys.size()/2, 2, &ids, &reused_ids) != 0) {
           return Status::ArgumentError("insert hashmap failed.");
@@ -301,6 +320,15 @@ Status CheckpointUtils::MergeLoadVariable(const std::string& var_name, const Var
   //slicer.reset(xslicer.release());
   result_variable->reset(new Variable(new Tensor(var->data), xslicer.release()));
   (*result_variable)->SetSlots(CloneSlots(var->slots));
+  (*result_variable)->SetStats(CloneStats(var->stats));
+  if (var->stats.size()) {
+    LOG(INFO) << "LoadVariable: " << var_name << ", stats size: " << var->stats.size()
+              << ", raw_id: " << var->stats.begin()->first
+              << ", unseen_times: " << var->stats.begin()->second.unseen_times
+              << ", show: " << var->stats.begin()->second.show << ", click: " << var->stats.begin()->second.click;
+  } else {
+    LOG(INFO) << "LoadVariable: " << var_name << ", stats size: " << var->stats.size();
+  }
   var->type = VariableStruct::kHashSlicer;
   var->initialized = true;
   return Status::Ok();
@@ -345,6 +373,9 @@ Status CheckpointUtils::StructToVariable(const VariableStruct& vs, std::unique_p
     }
     var->reset(new Variable(new Tensor(vs.data), slicer.release()));
     (*var)->SetSlots(CloneSlots(vs.slots));
+    if (vs.type == VariableStruct::kHashSlicer) {
+        (*var)->SetStats(CloneStats(vs.stats));
+    }
     return Status::Ok();
 }
 
@@ -465,6 +496,9 @@ Status CheckpointUtils::VariableToStruct(const std::unique_ptr<Variable>& var, V
   }
   vs->data = *var->GetData();
   vs->slots = CloneSlots(var->GetSlots());
+  if (vs->type == VariableStruct::kHashSlicer) {
+      vs->stats = CloneStats(var->GetStats());
+  }
   vs->initialized = true;
   return Status::Ok();
 }
@@ -495,6 +529,20 @@ Status CheckpointUtils::LoadVariable(FileSystem::ReadStream* s, VariableStruct* 
     PS_CHECK_STATUS(s->ReadRaw(&slot.joiner));
     PS_CHECK_STATUS(LoadTensor(s, slot.tensor.get()));
   }
+
+  if (var->type == VariableStruct::kHashSlicer) {
+      size_t stats_size;
+      PS_CHECK_STATUS(s->ReadRaw(&stats_size));
+      for (size_t i = 0; i < stats_size; i++) {
+          int64_t raw_id;
+          PS_CHECK_STATUS(s->ReadRaw(&raw_id));
+          Variable::FeatureStats& stats = var->stats[raw_id];
+          PS_CHECK_STATUS(s->ReadRaw(&stats.unseen_times));
+          PS_CHECK_STATUS(s->ReadRaw(&stats.show));
+          PS_CHECK_STATUS(s->ReadRaw(&stats.click));
+      }
+  }
+
   var->initialized = true;
   return Status::Ok();
 }
@@ -519,6 +567,17 @@ Status CheckpointUtils::SaveVariable(FileSystem::WriteStream* s, VariableStruct*
     PS_CHECK_STATUS(s->WriteStr(slot.first));
     PS_CHECK_STATUS(s->WriteRaw(slot.second.joiner));
     PS_CHECK_STATUS(SaveTensor(s, *slot.second.tensor));
+  }
+
+  if (var->type == VariableStruct::kHashSlicer) {
+    size_t stats_size = var->stats.size();
+    PS_CHECK_STATUS(s->WriteRaw(stats_size));
+    for (auto&& stats : var->stats) {
+      PS_CHECK_STATUS(s->WriteRaw(stats.first));
+      PS_CHECK_STATUS(s->WriteRaw(stats.second.unseen_times));
+      PS_CHECK_STATUS(s->WriteRaw(stats.second.show));
+      PS_CHECK_STATUS(s->WriteRaw(stats.second.click));
+    }
   }
   return Status::Ok();
 }
@@ -571,6 +630,14 @@ std::unordered_map<std::string, Variable::Slot> CheckpointUtils::CloneSlots(cons
   std::unordered_map<std::string, Variable::Slot> ret;
   for (auto&& item : slots) {
     ret[item.first] = Variable::Slot{.tensor = std::unique_ptr<Tensor>(new Tensor(*item.second.tensor)), .joiner = item.second.joiner};
+  }
+  return std::move(ret);
+}
+
+std::unordered_map<int64_t, Variable::FeatureStats> CheckpointUtils::CloneStats(const std::unordered_map<int64_t, Variable::FeatureStats>& stats){
+  std::unordered_map<int64_t, Variable::FeatureStats> ret;
+  for (auto&& item : stats) {
+    ret[item.first] = Variable::FeatureStats({item.second.unseen_times, item.second.show, item.second.click});
   }
   return std::move(ret);
 }

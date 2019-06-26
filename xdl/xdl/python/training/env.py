@@ -124,7 +124,14 @@ class DistributedEnv(Env):
       if self._ps_cpu_cores is None:
         raise Exception("ps_cpu_cores is not specified")        
       if self._ckpt_dir is None:
-        raise Exception("ckpt_dir is not specified")        
+        raise Exception("ckpt_dir is not specified")
+
+    if self._task_name == 'ps':
+      self._emb_fea_lifetime = None
+      if get_config():
+        self._emb_fea_lifetime = get_config("timedecay", "emb_fea_lifetime")
+      if self._emb_fea_lifetime == None:
+        self._emb_fea_lifetime = 0
 
     if get_config():
       self._model_server = get_config("model_server") or []
@@ -154,7 +161,8 @@ class DistributedEnv(Env):
         sm_dense = self._sm_dense,
         sm_sparse = self._sm_sparse,
         sm_hash = self._sm_hash,
-        bind_cores = self._bind_core)
+        bind_cores = self._bind_core,
+        emb_fea_lifetime = self._emb_fea_lifetime)
 
   def _scheduler_do(self):
     run_ps_scheduler(
