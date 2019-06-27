@@ -532,14 +532,15 @@ Status CheckpointUtils::LoadVariable(FileSystem::ReadStream* s, VariableStruct* 
 
   if (var->type == VariableStruct::kHashSlicer) {
       size_t stats_size;
-      PS_CHECK_STATUS(s->ReadRaw(&stats_size));
-      for (size_t i = 0; i < stats_size; i++) {
-          int64_t raw_id;
-          PS_CHECK_STATUS(s->ReadRaw(&raw_id));
-          Variable::FeatureStats& stats = var->stats[raw_id];
-          PS_CHECK_STATUS(s->ReadRaw(&stats.unseen_times));
-          PS_CHECK_STATUS(s->ReadRaw(&stats.show));
-          PS_CHECK_STATUS(s->ReadRaw(&stats.click));
+      if (s->ReadRaw(&stats_size).IsOk()) {
+          for (size_t i = 0; i < stats_size; i++) {
+              int64_t raw_id;
+              PS_CHECK_STATUS(s->ReadRaw(&raw_id));
+              Variable::FeatureStats& stats = var->stats[raw_id];
+              PS_CHECK_STATUS(s->ReadRaw(&stats.unseen_times));
+              PS_CHECK_STATUS(s->ReadRaw(&stats.show));
+              PS_CHECK_STATUS(s->ReadRaw(&stats.click));
+          }
       }
   }
 

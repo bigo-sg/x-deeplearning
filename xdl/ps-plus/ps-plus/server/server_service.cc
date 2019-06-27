@@ -221,6 +221,7 @@ void ServerService::Save(const std::vector<Data*>& inputs, std::vector<Data*>* o
   Status st = server_->TimeDecay(emb_fea_lifetime_, false);
   if (!st.IsOk()) {
     outputs->push_back(new WrapperData<Status>(st));
+    LOG(WARNING) << "TimeDecay failed, code: " << st.Code() << ", msg: " << st.Msg();
   }
   LOG(INFO) << "TimeDecay done, emb_fea_lifetime: " << emb_fea_lifetime_;
   LOG(INFO) << "Saving Checkpoint " << checkpoint->Internal();
@@ -243,8 +244,17 @@ void ServerService::Restore(const std::vector<Data*>& inputs, std::vector<Data*>
     outputs->push_back(new WrapperData<Status>(Status::ArgumentError("RestoreFunc: Input Type Error")));
     return;
   }
+
+  LOG(INFO) << "Restore Checkpoint " << checkpoint->Internal();
   Status st = server_->Restore(ver->Internal(), checkpoint->Internal(), from->Internal(), to->Internal());
+  if (!st.IsOk()) {
+      outputs->push_back(new WrapperData<Status>(st));
+      LOG(WARNING) << "Restore failed, code: " << st.Code() << ", msg: " << st.Msg();
+      return;
+  }
   outputs->push_back(new WrapperData<Status>(st));
+  LOG(INFO) << "Restore Checkpoint done" << checkpoint->Internal();
+
   LOG(INFO) << "TimeDecay begin, emb_fea_lifetime: " << emb_fea_lifetime_;
   st = server_->TimeDecay(emb_fea_lifetime_, true);
   if (!st.IsOk()) {
