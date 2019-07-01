@@ -50,7 +50,6 @@ ServerService::ServerService(
     std::string streaming_dense_model_addr,
     std::string streaming_sparse_model_addr,
     std::string streaming_hash_model_addr,
-    uint16_t emb_fea_lifetime,
     bool bind_cores) {
   port_ = NetUtils::GetAvailablePort();
   NetUtils::GetDefaultIP(ip_);
@@ -63,7 +62,6 @@ ServerService::ServerService(
   streaming_sparse_model_addr_ = streaming_sparse_model_addr;
   streaming_hash_model_addr_ = streaming_hash_model_addr;
   bind_cores_ = bind_cores;
-  emb_fea_lifetime_ = emb_fea_lifetime;
 }
 
 Status ServerService::Init() {
@@ -217,15 +215,8 @@ void ServerService::Save(const std::vector<Data*>& inputs, std::vector<Data*>* o
     outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SaveFunc: Input Type Error")));
     return;
   }
-  LOG(INFO) << "TimeDecay begin, emb_fea_lifetime: " << emb_fea_lifetime_;
-  Status st = server_->TimeDecay(emb_fea_lifetime_, false);
-  if (!st.IsOk()) {
-    outputs->push_back(new WrapperData<Status>(st));
-    LOG(WARNING) << "TimeDecay failed, code: " << st.Code() << ", msg: " << st.Msg();
-  }
-  LOG(INFO) << "TimeDecay done, emb_fea_lifetime: " << emb_fea_lifetime_;
   LOG(INFO) << "Saving Checkpoint " << checkpoint->Internal();
-  st = server_->Save(ver->Internal(), checkpoint->Internal(), info->Internal());
+  Status st = server_->Save(ver->Internal(), checkpoint->Internal(), info->Internal());
   outputs->push_back(new WrapperData<Status>(st));
   LOG(INFO) << "Saving Checkpoint Done " << checkpoint->Internal();
   return;
@@ -244,23 +235,8 @@ void ServerService::Restore(const std::vector<Data*>& inputs, std::vector<Data*>
     outputs->push_back(new WrapperData<Status>(Status::ArgumentError("RestoreFunc: Input Type Error")));
     return;
   }
-
-  LOG(INFO) << "Restore Checkpoint " << checkpoint->Internal();
   Status st = server_->Restore(ver->Internal(), checkpoint->Internal(), from->Internal(), to->Internal());
-  if (!st.IsOk()) {
-      outputs->push_back(new WrapperData<Status>(st));
-      LOG(WARNING) << "Restore failed, code: " << st.Code() << ", msg: " << st.Msg();
-      return;
-  }
   outputs->push_back(new WrapperData<Status>(st));
-  LOG(INFO) << "Restore Checkpoint done" << checkpoint->Internal();
-
-  LOG(INFO) << "TimeDecay begin, emb_fea_lifetime: " << emb_fea_lifetime_;
-  st = server_->TimeDecay(emb_fea_lifetime_, true);
-  if (!st.IsOk()) {
-    outputs->push_back(new WrapperData<Status>(st));
-  }
-  LOG(INFO) << "TimeDecay done, emb_fea_lifetime: " << emb_fea_lifetime_;
   return;
 }
 

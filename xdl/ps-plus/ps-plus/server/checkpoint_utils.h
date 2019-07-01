@@ -33,7 +33,6 @@ class CheckpointUtils {
     size_t index_slicer;
     Tensor data;
     std::unordered_map<std::string, Variable::Slot> slots;
-    std::unordered_map<int64_t, Variable::FeatureStats> stats;
   };
   Status LoadVariable(const std::string& var_name, size_t part, VariableStruct* var);
  private:
@@ -55,7 +54,6 @@ class CheckpointUtils {
   static Status LoadTensor(FileSystem::ReadStream* s, Tensor* data);
   static Status SaveTensor(FileSystem::WriteStream* s, const Tensor& data);
   static std::unordered_map<std::string, Variable::Slot> CloneSlots(const std::unordered_map<std::string, Variable::Slot>& slots);
-  static std::unordered_map<int64_t, Variable::FeatureStats> CloneStats(const std::unordered_map<int64_t, Variable::FeatureStats>& stats);
 
   std::string path_;
   std::unordered_map<std::string, VariableInfo> infos_;

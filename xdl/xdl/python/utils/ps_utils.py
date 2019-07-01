@@ -69,15 +69,14 @@ def run_ps_cmd(**kwargs):
 
 
 def run_ps_server(scheduler_kv_path, server_id,
-                  sm_dense, sm_sparse, sm_hash, bind_cores, emb_fea_lifetime):
+                  sm_dense, sm_sparse, sm_hash, bind_cores):
     return run_ps_cmd(r="server",
                       sp=scheduler_kv_path,
                       si=server_id,
                       smdense=sm_dense,
                       smsparse=sm_sparse,
                       smhash=sm_hash,
-                      bc=bind_cores,
-                      emblife=emb_fea_lifetime)
+                      bc=bind_cores)
 
 def run_ps_scheduler(scheduler_kv_path, server_num,
                      checkpoint_path, smem, snet,

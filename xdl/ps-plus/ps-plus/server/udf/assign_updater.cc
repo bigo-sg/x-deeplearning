@@ -40,9 +40,6 @@ class AssignUpdater : public SimpleUdf<Slices, Tensor> {
       return Status::ArgumentError("grad should has shape: " + std::to_string(slices.slice_size * slices.slice_id.size()));
     }
     */
-
-    UpdateSparseFeaStats(slices);
-
     CASES(data_tensor->Type(), do {
       T* data_ptr = data_tensor->Raw<T>();
       T* grad = grad_tensor.Raw<T>();

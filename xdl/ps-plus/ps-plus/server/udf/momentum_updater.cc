@@ -43,9 +43,6 @@ class MomentumUpdater : public SimpleUdf<Slices, Tensor, double, double, bool> {
     if (grad_tensor.Type() != data_tensor->Type()) {
       return Status::ArgumentError("grad should has same datatype with variable");
     }
-
-    UpdateSparseFeaStats(slices);
-
     /*
     if (grad_tensor.Shape().NumElements() != slices.slice_size * slices.slice_id.size()) {
       return Status::ArgumentError("grad should has shape: " + std::to_string(slices.slice_size * slices.slice_id.size()));

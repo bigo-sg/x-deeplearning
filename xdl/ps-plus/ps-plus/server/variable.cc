@@ -100,7 +100,6 @@ Status Variable::ReShapeId(size_t id) {
 void Variable::ClearIds(const std::vector<size_t>& ids) {
   for (size_t id : ids) {
     data_->ClearId(id);
-    stats_.erase(id);
   }
   for (auto& slot : slots_) {
     if (slot.second.joiner == kVariableLike) {
@@ -109,19 +108,6 @@ void Variable::ClearIds(const std::vector<size_t>& ids) {
       }
     }
   }
-}
-
-void Variable::UpdateStatsInfo(int64_t raw_id, int16_t unseen_times, float show_delta, float clk_delta) {
-    QRWLocker lock(stats_lock_, QRWLocker::kWrite);
-    auto iter = stats_.find(raw_id);
-    if (iter != stats_.end()) {
-      auto& stats = iter->second;
-      stats.unseen_times = unseen_times;
-      stats.click += clk_delta;
-      stats.show += show_delta;
-    } else {
-      stats_[raw_id] = FeatureStats({0, show_delta, clk_delta});
-    }
 }
 
 }

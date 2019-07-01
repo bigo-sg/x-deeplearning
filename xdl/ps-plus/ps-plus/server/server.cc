@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include <glog/logging.h>
 
 #include "ps-plus/server/server.h"
 #include "ps-plus/server/checkpoint_utils.h"
@@ -88,57 +87,6 @@ Status Server::Restore(Version ver, const std::string& checkpoint, const Variabl
     return Status::Ok();
   }
   return ckpt.LoadVariables(to, id_, &storage_manager_->Internal());
-}
-
-Status Server::TimeDecay(uint16_t emb_fea_lifetime, bool is_loading) {
-  QRWLocker lock(server_lock_, QRWLocker::kWrite);
-  std::vector<int64_t> keys;
-  std::unordered_set<int64_t> ids;
-  std::vector<size_t> raw_ids;
-
-  WrapperData<HashMap>* hashmap;
-  HashMap::HashMapStruct map;
-
-  for (auto&& var : storage_manager_->Internal()) {
-    hashmap = dynamic_cast<WrapperData<HashMap>*>(var.second->GetSlicer());
-    if (!hashmap) {
-      continue;
-    }
-
-    ids.clear();
-    for (auto&& fea : var.second->GetStats()) {
-      if (!is_loading) {
-        fea.second.unseen_times++;
-      }
-
-      if (fea.second.unseen_times >= emb_fea_lifetime) {
-        ids.insert(fea.first);
-      }
-    }
-
-    if (hashmap->Internal().GetHashKeys(&map) != 0) {
-        return Status::Unknown("TimeDecay Get " + var.first + " hash Keys Error");
-    }
-
-    if (ids.size()) {
-      keys.clear();
-
-      for (auto& item : map.items) {
-        if (ids.find(item.id) != ids.end()) {
-          keys.push_back(item.x);
-          keys.push_back(item.y);
-        }
-      }
-    }
-
-    hashmap->Internal().Del(&(keys[0]), keys.size() / 2, 2);
-    raw_ids.clear();
-    raw_ids.insert(raw_ids.begin(), ids.begin(), ids.end());
-    var.second->ClearIds(raw_ids);
-    LOG(INFO) << "TimeDecay for " << var.first << " origin=" <<
-              map.items.size() << ", clear=" << keys.size() / 2;
-  }
-  return Status::Ok();
 }
 
 Status Server::StreamingDenseVarName(Version ver, DenseVarNames* result) {

@@ -42,7 +42,6 @@ class Server {
   Status GatherStreamingDenseVar(Version ver, const DenseVarNames& name, DenseVarValues* result);
   Status TriggerStreamingSparse(Version ver);
   Status TriggerStreamingHash(Version ver);
-  Status TimeDecay(uint16_t emb_fea_lifetime, bool is_loading = false);
  private:
   // Writelocked when restore.
   QRWLock server_lock_;

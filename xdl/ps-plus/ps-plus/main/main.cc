@@ -24,7 +24,7 @@ limitations under the License.
 
 int ServerRun(int argc, char** argv) {
   google::InitGoogleLogging("ps-plus");
-  FLAGS_logtostderr = 1;
+//  FLAGS_logtostderr = 1;
   ps::OptionParser optParser;
   optParser.addOption("-sp", "--scheduler_kv_path", "scheduler_kv_path", ps::OptionParser::OPT_STRING, true);
   optParser.addOption("-si", "--server_id", "server_id", ps::OptionParser::OPT_INT32, true);
@@ -32,7 +32,6 @@ int ServerRun(int argc, char** argv) {
   optParser.addOption("-smsparse", "--streaming_model_sparse", "streaming_model_sparse", "");
   optParser.addOption("-smhash", "--streaming_model_hash", "streaming_model_hash", "");
   optParser.addOption("-bc", "--bind_cores", "bind_cores", ps::OptionParser::OPT_STRING, true);
-  optParser.addOption("-emblife", "--emb_fea_lifetime", "emb_fea_lifetime", UINT16_MAX);
   if (!optParser.parseArgs(argc, argv)) {
     LOG(ERROR) << "Parse Server Args Error";
     return -1;
@@ -51,17 +50,10 @@ int ServerRun(int argc, char** argv) {
   optParser.getOptionValue("streaming_model_sparse", streaming_model_sparse);
   optParser.getOptionValue("streaming_model_hash", streaming_model_hash);
   optParser.getOptionValue("bind_cores", bind_cores);
-
-  int lifetime;
-  optParser.getOptionValue("emb_fea_lifetime", lifetime);
-  if (lifetime <= 0 || lifetime > UINT16_MAX) {
-      lifetime = UINT16_MAX;
-  }
-
   ps::server::ServerService service(
       scheduler_kv_path, server_id,
       streaming_model_dense, streaming_model_sparse, 
-      streaming_model_hash, (uint16_t)lifetime, bind_cores == "True" ? true : false);
+      streaming_model_hash, bind_cores == "True" ? true : false);
   ps::Status st = service.Init();
   if (!st.IsOk()) {
     LOG(ERROR) << "ERROR ON Server Init:" << st.ToString();
