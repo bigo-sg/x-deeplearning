@@ -110,6 +110,7 @@ bool Scheduler::Schedule() {
 }
 
 ReadParam *Scheduler::Acquire() {
+  std::unique_lock<std::mutex> lck(mutex_);
   if (finished_) {
     return nullptr;
   }
@@ -121,7 +122,6 @@ ReadParam *Scheduler::Acquire() {
   if (rparam->ant_ == nullptr) {
     rparam->ant_ = fs_->GetAnt(rparam->path_);
   }
-  std::unique_lock<std::mutex> lck(mutex_);
   using_.insert(rparam);
   XDL_LOG(DEBUG) << "acquire " << rparam->DebugString();
   return rparam;
