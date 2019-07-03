@@ -29,9 +29,10 @@ class ScalarIntegerLogger : public SimpleUdf<Slices, std::string, int64_t> {
       const Slices& slices,
       const std::string& slot_name,
       const int64_t& pval) const {
-    Tensor* t = slices.variable->GetVariableLikeSlot(slot_name, DataType::kInt64, TensorShape(), []{ return new initializer::ConstantInitializer(0); });
-    int64_t* data = t->Raw<int64_t>();
     int64_t val = pval;
+    Tensor* t = slices.variable->GetVariableLikeSlot(slot_name, DataType::kInt64, TensorShape(), 
+                                                     [val]{ return new initializer::ConstantInitializer(double(val)); });
+    int64_t* data = t->Raw<int64_t>();
     for (size_t slice : slices.slice_id) {
       if (slice != (size_t)HashMap::NOT_ADD_ID) {
         data[slice] = val;
