@@ -143,6 +143,7 @@ class HashLogisticExpFilter : public SimpleUdf<std::string, double, int64_t> {
           });
          indexes = res_indexes;
       );
+      if (!indexes->size()) {break;}
     }
 
     std::vector<int64_t> keys;
