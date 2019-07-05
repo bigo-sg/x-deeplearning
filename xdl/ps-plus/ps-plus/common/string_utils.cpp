@@ -19,12 +19,13 @@ limitations under the License.
 #include <string>
 #include <mutex>
 #include <iostream>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
 
 using namespace std;
 
 namespace ps {
-
-const std::string StringUtils::space_ = " 　";
 
 class StringStreamPool {
 public:
@@ -216,8 +217,12 @@ bool StringUtils::strToDouble(const char* str, double& value)
 std::string StringUtils::trim(const std::string& str) {
     if (str.empty())  return str;
     std::string ret = std::move(str);
-    ret.erase(0, ret.find_first_not_of(space_));
-    ret.erase(ret.find_last_not_of(space_) + 1);
+    ret.erase(ret.begin(), std::find_if(ret.begin(), ret.end(), [](int ch) {
+        return !std::isspace(ch);
+    }));
+    ret.erase(std::find_if(ret.rbegin(), ret.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), ret.end());
     return ret;
 }
 

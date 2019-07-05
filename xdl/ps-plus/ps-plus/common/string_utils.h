@@ -60,7 +60,6 @@ public:
         const std::string& spec, char sep1 = '&', char sep2 = '=');
 
 private:
-    static const std::string space_;
     static std::stringstream* getStringStream();
     static void putStringStream(std::stringstream* ss);
     friend class StringStreamWrapper;
