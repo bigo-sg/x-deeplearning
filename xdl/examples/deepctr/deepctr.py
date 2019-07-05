@@ -39,10 +39,8 @@ def train():
     hooks.append(mark_hook1)
     hooks.append(mark_hook2)
     if xdl.get_task_index() == 0:
-        #filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.00001, " i>global_step || d>#L2#_ ")
-        #filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.00001, "i>global_step && d>#L2#_")
-        filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.002, "i>global_step&&d>#L2#_")
-        hooks.append(filter_hook)
+        hooks.append(xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.002, "i>global_step&&d>#L2#_"))
+        hooks.append(xdl.GlobalStepFilterHook(vars, 60, 10, "i>global_step"))
     loss = model(batch['deep0'], [emb1, emb2], batch['label'])
     train_op = xdl.SGD(0.5).optimize()
     log_hook = xdl.LoggerHook(loss, "loss:{0}", 10)
