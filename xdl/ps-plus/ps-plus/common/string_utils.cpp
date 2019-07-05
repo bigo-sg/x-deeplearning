@@ -230,7 +230,7 @@ std::string StringUtils::trim(const std::string& str) {
 std::vector<std::string> StringUtils::split(const std::string& text, 
         const std::string &sepStr, bool ignoreEmpty) {
     std::vector<std::string> vec;
-    std::string str(text);
+    std::string str(trim(text));
     std::string sep(sepStr);
     size_t n = 0, old = 0;
     while (n != std::string::npos) {
