@@ -49,10 +49,17 @@ class PsFilterOp : public xdl::OpKernelAsync {
       XDL_CHECK_STATUS_ASYNC(PS2XDL::ConvertStatus(st), done);
       done(Status::Ok());
     };
-    ps::client::UdfData udf("HashUnaryFilter", 
-                            ps::client::UdfData(0), 
-                            ps::client::UdfData(1), 
+
+    std::string filter = "HashUnaryFilter";
+    if (pattern_.find("&&") != std::string::npos || pattern_.find("||") != std::string::npos) {
+      filter = "HashLogisticExpFilter";
+    }
+
+    ps::client::UdfData udf(filter,
+                            ps::client::UdfData(0),
+                            ps::client::UdfData(1),
                             ps::client::UdfData(2));
+
     std::vector<ps::client::Partitioner*> spliters{
       new ps::client::partitioner::Broadcast, 
         new ps::client::partitioner::Broadcast,

@@ -31,10 +31,23 @@ def train():
     sess = xdl.TrainSession()
     emb1 = xdl.embedding('emb1', batch['sparse0'], xdl.TruncatedNormal(stddev=0.001), 8, 1024, vtype='hash')
     emb2 = xdl.embedding('emb2', batch['sparse1'], xdl.TruncatedNormal(stddev=0.001), 8, 1024, vtype='hash')
+    hooks = []
+
+    vars = ["emb1", "emb2"]
+    mark_hook1 = xdl.GlobalStepMarkHook("emb1", batch["sparse0"].ids)
+    mark_hook2 = xdl.GlobalStepMarkHook("emb2", batch["sparse1"].ids)
+    hooks.append(mark_hook1)
+    hooks.append(mark_hook2)
+    if xdl.get_task_index() == 0:
+        #filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.00001, " i>global_step || d>#L2#_ ")
+        #filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.00001, "i>global_step && d>#L2#_")
+        filter_hook = xdl.GlobalStepAndL2FilterHook(vars, 30, 10, 0.002, "i>global_step&&d>#L2#_")
+        hooks.append(filter_hook)
     loss = model(batch['deep0'], [emb1, emb2], batch['label'])
     train_op = xdl.SGD(0.5).optimize()
     log_hook = xdl.LoggerHook(loss, "loss:{0}", 10)
-    sess = xdl.TrainSession(hooks=[log_hook])
+    hooks.append(log_hook)
+    sess = xdl.TrainSession(hooks=hooks)
     while not sess.should_stop():
         sess.run(train_op)
 

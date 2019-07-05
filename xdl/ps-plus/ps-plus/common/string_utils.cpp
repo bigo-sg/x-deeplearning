@@ -24,6 +24,8 @@ using namespace std;
 
 namespace ps {
 
+const std::string StringUtils::space_ = " 　";
+
 class StringStreamPool {
 public:
     StringStreamPool() {
@@ -211,6 +213,15 @@ bool StringUtils::strToDouble(const char* str, double& value)
     return false;
 }
 
+std::string StringUtils::trim(const std::string& str) {
+    if (str.empty())  return str;
+    std::string ret = std::move(str);
+    ret.erase(0, ret.find_first_not_of(space_));
+    ret.erase(ret.find_last_not_of(space_) + 1);
+    return ret;
+}
+
+
 std::vector<std::string> StringUtils::split(const std::string& text, 
         const std::string &sepStr, bool ignoreEmpty) {
     std::vector<std::string> vec;
@@ -221,14 +232,14 @@ std::vector<std::string> StringUtils::split(const std::string& text,
         n = str.find(sep,n);
         if (n != std::string::npos) {
             if (!ignoreEmpty || n != old) 
-                vec.push_back(str.substr(old, n-old));
+                vec.push_back(trim(str.substr(old, n-old)));
             n += sep.length();
             old = n;
         }
     }
 
     if (!ignoreEmpty || old < str.length()) {
-        vec.push_back(str.substr(old, str.length() - old));
+        vec.push_back(trim(str.substr(old, str.length() - old)));
     }
 
     return vec;

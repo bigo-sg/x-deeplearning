@@ -39,6 +39,7 @@ public:
     static bool strToFloat(const char *str, float &value);
     static bool strToDouble(const char *str, double &value);    
     static std::vector<std::string> split(const std::string& text, const std::string &sepStr, bool ignoreEmpty = true);
+    static std::string trim(const std::string& str);
 
     template<typename T>
     static std::string toString(const T &x);
@@ -59,6 +60,7 @@ public:
         const std::string& spec, char sep1 = '&', char sep2 = '=');
 
 private:
+    static const std::string space_;
     static std::stringstream* getStringStream();
     static void putStringStream(std::stringstream* ss);
     friend class StringStreamWrapper;

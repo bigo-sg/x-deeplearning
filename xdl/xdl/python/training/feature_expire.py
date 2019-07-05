@@ -66,3 +66,38 @@ class GlobalStepFilterHook(Hook):
     print("GlobalStepFilterHook running all")
     xdl.execute(self.generate_filter_ops(self.gstep_val))
 
+
+class GlobalStepAndL2FilterHook(Hook):
+  def __init__(self, vars, interval_steps, expire_steps, expire_modules, cond):
+    super(GlobalStepAndL2FilterHook, self).__init__()
+    self._interval_steps = interval_steps
+    self._expire_steps = expire_steps
+    self._expire_modules = expire_modules
+    self._vars = vars
+    self._global_step = get_global_step()
+    self._last_filter_step = 0
+    self._cond = cond
+
+    self.gstep_val = 0
+
+  def generate_filter_ops(self, current_step):
+    all_ops = []
+    for var_name in self._vars:
+      filter_op = xdl.ps_filter_op(self._expire_modules, current_step - self._expire_steps, var_name, self._cond)
+      all_ops.append(filter_op)
+    return all_ops
+
+  def before_run(self, v):
+    return [self._global_step.value]
+
+  def after_run(self, v):
+    self.gstep_val = v[0] if isinstance(v, list) else v
+    if self.gstep_val - self._last_filter_step >= self._interval_steps:
+      print("GlobalStepAndL2FilterHook running all")
+      xdl.execute(self.generate_filter_ops(self.gstep_val))
+      self._last_filter_step = self.gstep_val
+
+  def end(self):
+    self.gstep_val = xdl.execute(self._global_step.value)
+    print("GlobalStepAndL2FilterHook running all")
+    xdl.execute(self.generate_filter_ops(self.gstep_val))
