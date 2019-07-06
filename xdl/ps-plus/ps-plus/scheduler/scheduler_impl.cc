@@ -520,6 +520,27 @@ Status SchedulerImpl::InternalSave(const string& checkpoint) {
       }
     }
 
+    if(checkpoint_path_.size() > 0 && checkpoint.size() > 0){
+      do{
+        std::string emb_bin_dir = checkpoint_path_ + "/" + checkpoint + "/emb_bin";
+        std::vector<std::string> emb_bin_files;
+        LOG(INFO) << "clear emb dir " << emb_bin_dir;
+        auto st = FileSystem::ListDirectoryAny(emb_bin_dir, &emb_bin_files);
+        if(!st.IsOk()){
+          LOG(INFO) << "list dir  " << emb_bin_dir << " failed. " << st.Msg();
+          break;
+        }
+        for(auto f : emb_bin_files){
+            LOG(INFO) << "remove emb bin file " << f;
+            st = FileSystem::RemoveAny(f);
+            if(!st.IsOk()){
+              LOG(INFO) << "remove file " << f << " failed";
+              break;
+            }
+        }
+      }while(0);
+    }
+
     count_down = service_->GetServerSize(0);
 
     for (auto& it: servers_) {
