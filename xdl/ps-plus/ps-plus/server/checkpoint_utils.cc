@@ -382,10 +382,6 @@ Status CheckpointUtils::SaveVariableExt(const std::string &var_name, VariableStr
   return Status::Ok();
 }
 
-struct Piece {
-  unsigned long key;
-  float val[0];
-};
 
 static void SaveSparseVariableBinaryThread(const std::string &path,
         const std::string &var_name, 
@@ -400,7 +396,7 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
   auto raw_file_name = var_name + "_" + std::to_string(thread_id);
   auto status = FileSystem::OpenWriteStreamAny(path + '/' + raw_file_name, &s);
   if(!status.IsOk()){
-    std::cout <<"open " << path << "/" << raw_file_name << " failed\n";
+    LOG(INFO) <<"open " << path << "/" << raw_file_name << " failed\n";
     return;
   }
   std::vector<size_t> dims = var->data.Shape().Dims();
@@ -408,21 +404,18 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
   for (size_t dim = 1; dim < dims.size(); dim++) {
     slicer_size *= dims[dim];
   }
-
-  std::unique_ptr<char[]> buf;
-  auto piece_size = sizeof(unsigned long) + sizeof(float) * slicer_size;
-  buf = std::make_unique<char[]>(piece_size);
-  auto piece = reinterpret_cast<Piece*>(buf.get());
+  
+  auto piece_size = sizeof(int64_t) + sizeof(float) * slicer_size;
+  std::vector<char> buf(piece_size);
+  char * buf_ptr = buf.data();
   for (size_t i = thread_id; i < var->hash_slicer.items.size(); i += total_threads) {
     ps::HashMapItem& item = var->hash_slicer.items[i];
     CASES(var->data.Type(),
     do {
       T* raw = var->data.Raw<T>();
-      piece->key = item.y;
-      for (size_t j = 0; j < slicer_size; j++) {
-        piece->val[j] = raw[item.id * slicer_size + j];
-      }
-      s->Write(buf.get(), piece_size);
+      memcpy(buf_ptr, &(item.y), sizeof(int64_t));
+      memcpy(buf_ptr + sizeof(int64_t), raw + item.id * slicer_size, sizeof(float) * slicer_size);
+      s->Write(buf_ptr, piece_size);
     } while (0));
   }
   s->Close();
@@ -431,9 +424,10 @@ Status CheckpointUtils::SaveSparseVariableBinary(const std::string &var_name, Va
   struct timeval ts0, ts1;
   gettimeofday(&ts0, NULL);
 
+  std::string sub_dir = "emb_bin";
   std::vector<std::thread*> threads;
   size_t thread_num = 10;
-  auto file_name = "emb_bin/" + VariableNameToFileName(var_name, part);
+  auto file_name = sub_dir + "/"  + VariableNameToFileName(var_name, part);
   for(size_t i = 0; i < thread_num; ++i){
     threads.push_back(new std::thread(SaveSparseVariableBinaryThread, path_,
                 file_name, var, i, thread_num));
