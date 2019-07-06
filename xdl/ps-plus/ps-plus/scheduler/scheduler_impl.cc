@@ -535,7 +535,7 @@ Status SchedulerImpl::InternalSave(const string& checkpoint) {
             st = FileSystem::RemoveAny(f);
             if(!st.IsOk()){
               LOG(INFO) << "remove file " << f << " failed";
-              break;
+              continue;
             }
         }
       }while(0);
