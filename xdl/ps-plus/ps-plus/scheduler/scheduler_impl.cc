@@ -527,7 +527,7 @@ Status SchedulerImpl::InternalSave(const string& checkpoint) {
         LOG(INFO) << "clear emb dir " << emb_bin_dir;
         auto st = FileSystem::ListDirectoryAny(emb_bin_dir, &emb_bin_files);
         if(!st.IsOk()){
-          LOG(INFO) << "list dir  " << emb_bin_files << " failed. " << st.Msg();
+          LOG(INFO) << "list dir  " << emb_bin_dir << " failed. " << st.Msg();
           break;
         }
         for(auto f : emb_bin_files){
