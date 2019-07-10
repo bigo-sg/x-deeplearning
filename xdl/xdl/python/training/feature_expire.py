@@ -66,6 +66,7 @@ class GlobalStepFilterHook(Hook):
     print("GlobalStepFilterHook running all")
     xdl.execute(self.generate_filter_ops(self.gstep_val))
 
+<<<<<<< HEAD
 
 class GlobalStepAndL2FilterHook(Hook):
   def __init__(self, vars, interval_steps, expire_steps, expire_modules, cond):
@@ -101,3 +102,5 @@ class GlobalStepAndL2FilterHook(Hook):
     self.gstep_val = xdl.execute(self._global_step.value)
     print("GlobalStepAndL2FilterHook running all")
     xdl.execute(self.generate_filter_ops(self.gstep_val))
+=======
+>>>>>>> newrepo/master
