@@ -27,13 +27,14 @@ class DataReader(DataIO):
                  namenode="",
                  paths=None,
                  meta=None,
-                 enable_state=True):
+                 enable_state=True,
+                 converter_file="main_newData.py"):
         self._ds_name = ds_name
         self._paths = list()
         self._meta = meta
         self._fs_type = fs_type
         self._namenode = namenode
-
+        self._converter_file = converter_file
         if paths is not None:
             assert isinstance(paths, list), "paths must be a list"
 
@@ -103,7 +104,7 @@ class DataReader(DataIO):
                 
                 local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
                 
-                script_cmd = "python {}/main_newData.py {}".format(currentDirectory,local_path)
+                script_cmd = "python {}/{} {}".format(currentDirectory,self._converter_file,local_path)
                 self._exec_cmd(script_cmd)
                 
                 fpath =  local_path+".txt"
