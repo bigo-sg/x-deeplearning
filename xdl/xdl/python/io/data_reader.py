@@ -16,6 +16,7 @@
 import sys
 import os
 import xdl
+import subprocess
 from xdl.python import pybind
 from xdl.python.io.data_io import DataIO
 from xdl.python.io.data_sharding import DataSharding
@@ -69,7 +70,12 @@ class DataReader(DataIO):
         self.add_path(paths)
         if self._meta is not None:
             self.set_meta(self._meta)
-
+    def _exec_cmd(self, exec_cmd):
+        p = subprocess.Popen(exec_cmd,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT,
+                         shell=True)
+        return p
     def _decode_path(self, path):
         '''
         hdfs://namenode/path
@@ -86,18 +92,23 @@ class DataReader(DataIO):
             fpath = '/'+arr[3]
             if arr[3].endswith(".gz"):
                 currentDirectory = os.getcwd()
-                os.system("/data/opt/hadoop-3.1.0/bin/hadoop fs -get {} {}".format(path, currentDirectory))
-                
+                hdp_cmd ="hadoop fs -get {} {}".format(path, currentDirectory)
+                self._exec_cmd(hdp_cmd)
                 dirs_splited = path.split('/')
                 gz_filename = dirs_splited[len(dirs_splited)-1]
-                os.system("gunzip {}/{}".format(currentDirectory,gz_filename))
-                mio_local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
+
+                gzip_cmd = "gunzip {}/{}".format(currentDirectory,gz_filename)
+                self._exec_cmd(gzip_cmd)
+
                 
-                os.system("python {}/main_newData.py {}".format(currentDirectory,mio_local_path))
-                #print("{}/main_newData.py {}".format(os.path.dirname(os.path.abspath(__file__)),mio_local_path))
-                fpath =  mio_local_path+".txt"
+                local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
+                
+                script_cmd = "python {}/main_newData.py {}".format(currentDirectory,local_path)
+                self._exec_cmd(script_cmd)
+                
+                fpath =  local_path+".txt"
                 fs_type = pybind.fs.local
-                #os.system("rm {}".format(mio_local_path))
+                
         elif path.startswith('kafka://'):
             fs_type = pybind.fs.kafka
             arr = path.split('/', 2)
