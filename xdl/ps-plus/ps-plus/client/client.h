@@ -145,6 +145,16 @@ class Client: public BaseClient {
                 double add_probability, 
                 Tensor* result, 
                 const Callback& cb) override;
+  void HashPullWithFeaStats(const std::string& variable_name,
+                            const Tensor& ids,
+                            const Tensor& fea_stats_delta,
+                            int64_t ivals,
+                            double add_probability,
+                            const std::string& stats_desp,
+                            const std::string& pattern,
+                            Tensor* result,
+                            Tensor* fea_stats,
+                            const Callback& cb) override;
   void HashPush(const std::string& variable_name, 
                 const Tensor& ids, 
                 const std::string& updater, 

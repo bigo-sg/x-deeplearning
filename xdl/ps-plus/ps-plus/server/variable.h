@@ -55,6 +55,11 @@ class Variable {
   Status GetExistSlot(const std::string& name, Tensor** result);
   Status ReShapeId(size_t id);
   void ClearIds(const std::vector<size_t>& id);
+  void SetStatsVec(const std::vector<std::string>& stats) {
+    if (!stats_vec_.size()) { return;}
+    stats_vec_.insert(stats_vec_.begin(), stats.begin(), stats.end());
+  }
+  const std::vector<std::string>& GetStatsVec() { return stats_vec_; }
 
   // Used for Save and Restore
   const std::unordered_map<std::string, Slot>& GetSlots() { return slots_; }
@@ -71,6 +76,7 @@ class Variable {
   std::unique_ptr<Tensor> data_;
   std::unique_ptr<Data> slicer_;
   std::unordered_map<std::string, Slot> slots_;
+  std::vector<std::string> stats_vec_;
 };
 
 }

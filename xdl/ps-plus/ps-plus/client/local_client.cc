@@ -287,6 +287,61 @@ void LocalClient::HashPull(const std::string& variable_name,
   Process(udf_chain, variable_name, inputs, outputs, realcb);
 }
 
+void LocalClient::HashPullWithFeaStats(const std::string& variable_name,
+                                       const Tensor& ids,
+                                       const Tensor& fea_stats_delta,
+                                       int64_t ivals,
+                                       double add_probability,
+                                       const std::string& stats_desp,
+                                       const std::string& pattern,
+                                       Tensor* result,
+                                       Tensor* fea_stats,
+                                       const Callback& cb) {
+  std::vector<Data*> inputs = Args(ids, false, 1.0,
+                                   pattern, ivals, stats_desp, fea_stats_delta);
+
+  std::vector<std::unique_ptr<Data>>* outputs = new std::vector<std::unique_ptr<Data>>;
+
+  UdfData slice_udf("BuildHashSlice", UdfData(0), UdfData(1), UdfData(2));
+  UdfData trans_udf("SliceToTensor", UdfData("TransSlice", slice_udf));
+  UdfData scalar_udf("ScalarIntegerLogger", slice_udf, UdfData(3), UdfData(4));
+  UdfData integrated_udf("IntegratedIntegerLogger", slice_udf, UdfData(5), UdfData(6));
+
+  UdfChain udf_chain({trans_udf, scalar_udf, integrated_udf});
+  Callback realcb = [cb, result, fea_stats, outputs](const Status& st) {
+    std::unique_ptr<std::vector<std::unique_ptr<Data>>> deleter(outputs);
+    if (!st.IsOk()) {
+      cb(st);
+      return;
+    }
+
+    if (outputs->size() != 2) {
+      cb(Status::ArgumentError("Output Size Should be 2 on HashPullWithFeaStats"));
+      return;
+    }
+
+    WrapperData<Tensor>* output_ptr =
+      dynamic_cast<WrapperData<Tensor>*>((*outputs)[0].get());
+    if (output_ptr == nullptr) {
+      cb(Status::ArgumentError("Output[0] should be tensor"));
+      return;
+    }
+
+    WrapperData<Tensor>* out_ptr =
+      dynamic_cast<WrapperData<Tensor>*>((*outputs)[1].get());
+    if (out_ptr == nullptr) {
+      cb(Status::ArgumentError("Output[1] should be tensor"));
+      return;
+    }
+
+    *result = output_ptr->Internal();
+    *fea_stats = out_ptr->Internal();
+    cb(Status::Ok());
+  };
+
+  Process(udf_chain, variable_name, inputs, outputs, realcb);
+}
+
 void LocalClient::HashPush(const std::string& variable_name, 
                            const Tensor& ids, 
                            const std::string& updater, 
