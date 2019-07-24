@@ -305,7 +305,7 @@ void LocalClient::HashPullWithFeaStats(const std::string& variable_name,
   UdfData slice_udf("BuildHashSlice", UdfData(0), UdfData(1), UdfData(2));
   UdfData trans_udf("SliceToTensor", UdfData("TransSlice", slice_udf));
   UdfData scalar_udf("ScalarIntegerLogger", slice_udf, UdfData(3), UdfData(4));
-  UdfData integrated_udf("IntegratedIntegerLogger", slice_udf, UdfData(5), UdfData(6));
+  UdfData integrated_udf("SliceToTensor", UdfData("IntegratedIntegerLogger", slice_udf, UdfData(5), UdfData(6)));
 
   UdfChain udf_chain({trans_udf, scalar_udf, integrated_udf});
   Callback realcb = [cb, result, fea_stats, outputs](const Status& st) {

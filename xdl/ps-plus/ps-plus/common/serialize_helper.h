@@ -225,7 +225,7 @@ ps::Status SerializeHelper::Deserialize<ps::Tensor>(const char* buf,
   PS_CHECK_STATUS(Deserialize<ps::DataType>(buf, &type, &field_len, mem_guard));
   *len = field_len;
   ps::TensorShape shape({0});
-  PS_CHECK_STATUS(Deserialize<ps::TensorShape>(buf + *len, &shape, &field_len, mem_guard));  
+  PS_CHECK_STATUS(Deserialize<ps::TensorShape>(buf + *len, &shape, &field_len, mem_guard));
   *len += field_len;
   const char* tensor_buffer = buf + *len;
   size_t buffer_len = 0;
@@ -238,8 +238,13 @@ ps::Status SerializeHelper::Deserialize<ps::Tensor>(const char* buf,
   *len += field_len;
   ps::Initializer* iz = nullptr;
   Fragment frag({.base=(char*)buf, .size=*len});
-  DeserializeAny<ps::Initializer>(serialize_id, &frag, *len, &iz, &field_len, mem_guard);
-  *len += field_len;
+  Status st = DeserializeAny<ps::Initializer>(serialize_id, &frag, *len, &iz, &field_len, mem_guard);
+  if (st.IsOk()) {
+    *len += field_len;
+  } else {
+    *len -= sizeof(size_t);
+  }
+
   *t = Tensor(type, std::move(shape), const_cast<char*>(tensor_buffer), iz);
   return ps::Status::Ok();
 }

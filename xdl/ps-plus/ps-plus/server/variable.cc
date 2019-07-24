@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "ps-plus/server/variable.h"
 
+#include <glog/logging.h>
+
 namespace ps {
 namespace server {
 
@@ -34,6 +36,20 @@ Tensor* Variable::GetSlot(const std::string& name, const std::function<Slot()>& 
     }
     slots_[name] = slot_creator();
     return slots_[name].tensor.get();
+  }
+}
+
+void Variable::SetStatsVec(const std::vector<std::string>& stats) {
+  LOG_ASSERT(stats.size()) << "fea stats num eq 0.";
+
+  if (!stats_vec_.size()) {
+    stats_vec_.insert(stats_vec_.begin(), stats.begin(), stats.end());
+    return;
+  }
+
+  LOG_ASSERT(stats.size() == stats_vec_.size()) << "fea stats num has changed.";
+  for (size_t i = 0; i < stats_vec_.size(); ++i) {
+    LOG_ASSERT(stats[i] == stats_vec_[i]) << "fea stats item " << i << " has changed.";
   }
 }
 

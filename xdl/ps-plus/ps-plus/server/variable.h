@@ -15,13 +15,13 @@ limitations under the License.
 
 #ifndef PS_PLUS_SERVER_VARIABLE_H_
 #define PS_PLUS_SERVER_VARIABLE_H_
+#include <memory>
+#include <unordered_map>
 
 #include "ps-plus/common/data.h"
 #include "ps-plus/common/tensor.h"
 #include "ps-plus/common/status.h"
 #include "ps-plus/common/qrw_lock.h"
-#include <memory>
-#include <unordered_map>
 
 namespace ps {
 namespace server {
@@ -55,10 +55,7 @@ class Variable {
   Status GetExistSlot(const std::string& name, Tensor** result);
   Status ReShapeId(size_t id);
   void ClearIds(const std::vector<size_t>& id);
-  void SetStatsVec(const std::vector<std::string>& stats) {
-    if (!stats_vec_.size()) { return;}
-    stats_vec_.insert(stats_vec_.begin(), stats.begin(), stats.end());
-  }
+  void SetStatsVec(const std::vector<std::string>& stats);
   const std::vector<std::string>& GetStatsVec() { return stats_vec_; }
 
   // Used for Save and Restore
