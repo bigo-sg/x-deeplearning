@@ -73,6 +73,8 @@ class GetBatchOp: public OpKernel {
     TensorList out_svalues;
     TensorList out_dvalues;
     TensorList out_indicators;
+    TensorList out_sindexs;
+    TensorList out_ssegments;
 
     auto out_list = data_io_->sparse_list();
     XDL_CHECK(out_list.size() == sparse_count_);
@@ -85,11 +87,15 @@ class GetBatchOp: public OpKernel {
         XDL_DCHECK(blk->ts_[io::Block::kIndex] != nullptr && blk->ts_[io::Block::kIndex]->Type() == types::kInt32);
         out_ids.push_back(*blk->ts_[io::Block::kUKey]);
         out_indices.push_back(*blk->ts_[io::Block::kIndex]);
+        out_sindexs.push_back(*blk->ts_[io::Block::kSIndex]);
+        out_ssegments.push_back(*blk->ts_[io::Block::kSSegment]);
       } else {
         XDL_DCHECK(blk->ts_[io::Block::kKey] != nullptr && blk->ts_[io::Block::kKey]->Type() == types::kInt64);
         XDL_DCHECK(blk->ts_[io::Block::kIndex] == nullptr);
         out_ids.push_back(*blk->ts_[io::Block::kKey]);
         out_indices.push_back(Tensor(ctx->GetDevice(), TensorShape({0}), types::kInt32));
+        out_sindexs.push_back(Tensor(ctx->GetDevice(), TensorShape({0}), types::kInt32));
+        out_ssegments.push_back(Tensor(ctx->GetDevice(), TensorShape({0}), types::kInt32));
       }
 
       if (blk->ts_[io::Block::kValue] != nullptr) {
@@ -107,6 +113,8 @@ class GetBatchOp: public OpKernel {
     XDL_CHECK_STATUS(ctx->SetOutputList("ids", out_ids));
     XDL_CHECK_STATUS(ctx->SetOutputList("segments", out_segments));
     XDL_CHECK_STATUS(ctx->SetOutputList("svalues", out_svalues));
+    XDL_CHECK_STATUS(ctx->SetOutputList("sindexs", out_sindexs));
+    XDL_CHECK_STATUS(ctx->SetOutputList("ssegments", out_ssegments));
 
     out_list = data_io_->dense_list();
     XDL_DCHECK(out_list.size() == dense_count_);
@@ -156,7 +164,9 @@ XDL_DEFINE_OP(GetBatch)
   .OutputList("dvalues", "dtype", "dense_count")
   .Output("skbuf", DataType::kInt8)
   .Output("sklen", DataType::kInt32)
-  .Output("label", "dtype");
+  .Output("label", "dtype")
+  .OutputList("sindexs", DataType::kInt32, "sparse_count")
+  .OutputList("ssegments", DataType::kInt32, "sparse_count");
 
 #define REGISTER_KERNEL(T)                     \
   XDL_REGISTER_KERNEL(GetBatch, GetBatchOp<T>) \

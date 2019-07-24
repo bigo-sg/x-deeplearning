@@ -27,7 +27,9 @@ struct UniqueFunctor;
 
 template <typename T, typename I>
 struct UniqueFunctor<CpuDevice, T, I> {
-  void operator()(CpuDevice *d, const Tensor &in, Tensor *out, Tensor *out_index);
+  void operator()(CpuDevice *d, const Tensor &in, const Tensor &segment,
+                  Tensor *out, Tensor *out_index,
+                  Tensor *out_sindex, Tensor *out_ssegment);
 };
 
 }  // namespace functor

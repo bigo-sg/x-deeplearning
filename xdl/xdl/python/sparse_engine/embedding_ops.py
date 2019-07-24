@@ -27,9 +27,17 @@ def ksum(embeddings, idx, values, segments):
     groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
     return xdl.ksum(embeddings, idx, values, segments, groups)
 
+def fsum(stats, idx, values, segments):
+    groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
+    return xdl.fsum(stats, idx, values, segments, groups)
+
 def kmean(embeddings, idx, values, segments):
     groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
     return xdl.ksum(embeddings, idx, values, segments, groups, average=True)
+
+def fmean(stats, idx, values, segments):
+    groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
+    return xdl.fsum(stats, idx, values, segments, groups, average=True)
 
 def merged_ksum(embeddings, idx, values, segments, groups):
     return xdl.ksum(embeddings, idx, values, segments, groups)
@@ -41,6 +49,12 @@ def tile(embeddings, idx, values, segments, length, reverse=False):
     groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
     return xdl.tile(embeddings, idx, values, segments, groups,
                     reverse=reverse, length=length)
+
+def ftile(stats, idx, values, segments, length, reverse=False):
+    groups = np.array([], dtype=dtype_xdl_2_np(segments.dtype))
+    return xdl.ftile(stats, idx, values, segments, groups,
+                     reverse=reverse, length=length)
+
 
 def merged_tile(embeddings, idx, values, segments, groups, length, reverse=False):
     return xdl.tile(embeddings, idx, values, segments, groups,

@@ -52,6 +52,8 @@ struct Block {
     kKey,            // int64 key, sparse key
     kUKey,           // int64 key, unique sparse key
     kSBuf,           // int8 sample key
+    kSIndex,         // int32 id => sample index
+    kSSegment,       // int32 segment of kSIndex
     kTypes,          // number of type
   };
   Tensor *ts_[kTypes];

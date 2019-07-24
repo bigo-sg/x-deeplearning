@@ -49,6 +49,11 @@ def PsSparsePullOpGrad(op, grad):
     indices = op.inputs[0]
     return [SparseGrad(grad[0], indices)]
 
+@def_gradient("PsSparsePullWithFeaStatsOp")
+def PsSparsePullWithFeaStatsOpGrad(op, grad):
+    indices = op.inputs[0]
+    return [SparseGrad(grad[0], indices)]
+
 @def_gradient("TakeOp")
 def TakeGrad(op, grad):
     g = xdl.take_grad(grad[0], op.inputs[1], op.inputs[0])

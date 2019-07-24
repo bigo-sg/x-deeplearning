@@ -101,3 +101,41 @@ class GlobalStepAndL2FilterHook(Hook):
     self.gstep_val = xdl.execute(self._global_step.value)
     print("GlobalStepAndL2FilterHook running all")
     xdl.execute(self.generate_filter_ops(self.gstep_val))
+
+class FeatureScoreFilterHook(Hook):
+  def __init__(self, vars, interval_steps, decay_rate, nonclk_weight, clk_weight, threshold):
+    super(FeatureScoreFilterHook, self).__init__()
+    self._vars = vars
+    self._interval_steps = interval_steps
+    self._decay_rate = decay_rate
+    self._nonclk_weight = nonclk_weight
+    self._clk_weight = clk_weight
+    self._threshold = threshold
+
+    self._global_step = get_global_step()
+    self._last_filter_step = 0
+    self.gstep_val = 0
+
+  def generate_filter_ops(self, current_step):
+    all_ops = []
+    for var_name in self._vars:
+      filter_op = xdl.ps_feature_score_filter_op(current_step, var_name,
+                                                 self._decay_rate, self._nonclk_weight,
+                                                 self._clk_weight, self._threshold)
+      all_ops.append(filter_op)
+    return all_ops
+
+  def before_run(self, v):
+    return [self._global_step.value]
+
+  def after_run(self, v):
+    self.gstep_val = v[0] if isinstance(v, list) else v
+    if self.gstep_val - self._last_filter_step >= self._interval_steps:
+      print("FeatureScoreFilterHook running all")
+      xdl.execute(self.generate_filter_ops(self.gstep_val))
+      self._last_filter_step = self.gstep_val
+
+  def end(self):
+    self.gstep_val = xdl.execute(self._global_step.value)
+    print("FeatureScoreFilterHook running all")
+    xdl.execute(self.generate_filter_ops(self.gstep_val))

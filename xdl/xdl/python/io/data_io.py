@@ -240,6 +240,8 @@ class DataIO(pybind.DataIO):
             batch["skbuf"] = out[6]
             batch["sklen"] = out[7]
         batch["label"] = out[8]
+        batch["_sindices"] = out[9]
+        batch["_ssegments"] = out[10]
 
         ### indicator
         for i in range(len(batch["indicators"])):
@@ -250,10 +252,14 @@ class DataIO(pybind.DataIO):
         assert len(self._sparse_list) == len(batch['_ids'])
         assert len(self._sparse_list) == len(batch['_svalues'])
         assert len(self._sparse_list) == len(batch['_segments'])
+        assert len(self._sparse_list) == len(batch['_sindices'])
+        assert len(self._sparse_list) == len(batch['_ssegments'])
         for i in range(len(self._sparse_list)):
             name = self._sparse_list[i]
             batch[name] = xdl.SparseTensor(batch['_ids'][i], batch["_svalues"][i], batch['_segments'][i],
-                                           batch['_indices'][i] if self._unique_ids else None)
+                                           batch['_indices'][i] if self._unique_ids else None,
+                                           batch['_sindices'][i] if self._unique_ids else None,
+                                           batch['_ssegments'][i] if self._unique_ids else None)
 
             opt = self._fea_dict.get(name)
             assert opt != None

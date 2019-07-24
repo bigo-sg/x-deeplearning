@@ -45,6 +45,17 @@ class TileOp : public OpKernel {
   int64_t length_;
 };
 
+template <typename T, typename I>
+class FTileOp : public OpKernel {
+ public:
+  Status Init(OpKernelConstruction* ctx) override;
+  Status Compute(OpKernelContext* ctx) override;
+ private:
+  bool reverse_;
+  int64_t length_;
+};
+
+
 }  // namespace xdl
 
 #endif  // XDL_CORE_OPS_TILE_OP_H_

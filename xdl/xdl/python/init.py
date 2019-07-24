@@ -27,7 +27,7 @@ from xdl.python.framework.gradient import def_gradient, def_gradient_internal, g
 from xdl.python.framework.session import Session, Hook
 from xdl.python.framework.variable import Variable, trainable_variables, global_variables, global_initializers, variable_registers, get_variable_by_name
 from xdl.python.sparse_engine.base import SparseTensor, MergedSparseTensor
-from xdl.python.sparse_engine.embedding import embedding, merged_embedding
+from xdl.python.sparse_engine.embedding import embedding, merged_embedding, embedding_with_fea_stats
 from xdl.python.training.gradient_utils import get_gradient, get_gradients
 from xdl.python.ops.init_ops import *
 from xdl.python.utils.config import *
@@ -40,7 +40,7 @@ from xdl.python import preload as _preload
 from xdl.python.training.optimizer_impls import SGD, Momentum, Adagrad, Adam, Ftrl
 from xdl.python.training.gradient_utils import get_gradients, get_gradient
 from xdl.python.training.train_session import TrainSession, LoggerHook, SyncRunHook, SemiSyncRunHook, BarrierHook
-from xdl.python.training.feature_expire import GlobalStepMarkHook, GlobalStepFilterHook, GlobalStepAndL2FilterHook
+from xdl.python.training.feature_expire import GlobalStepMarkHook, GlobalStepFilterHook, GlobalStepAndL2FilterHook, FeatureScoreFilterHook
 from xdl.python.training.estimator import Estimator
 from xdl.python.training.env import current_env
 import xdl.python.ops.ops_grad

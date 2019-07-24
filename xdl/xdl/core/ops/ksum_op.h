@@ -44,6 +44,15 @@ class KSumOp: public OpKernel {
   bool average_;
 };
 
+template <typename T, typename I>
+class FSumOp: public OpKernel {
+ public:
+  Status Init(OpKernelConstruction* ctx) override;
+  Status Compute(OpKernelContext* ctx) override;
+ private:
+  bool average_;
+};
+
 }  // namespace xdl
 
 #endif  // XDL_CORE_OPS_KSUM_OP_H_

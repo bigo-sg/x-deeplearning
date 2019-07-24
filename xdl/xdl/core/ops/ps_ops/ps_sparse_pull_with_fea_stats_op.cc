@@ -54,7 +54,7 @@ class PsSparsePullWithFeaStatsOp : public xdl::OpKernelAsync {
     XDL_CHECK_STATUS_ASYNC(
         XDL2PS::ConvertTensor(stats_delta, &convert_delta),
         done);
-    
+
     Tensor t_i;
     XDL_CHECK_STATUS_ASYNC(ctx->GetInput(2, &t_i), done);
     int64_t i = t_i.Scalar<int64_t>();
@@ -70,11 +70,9 @@ class PsSparsePullWithFeaStatsOp : public xdl::OpKernelAsync {
       XDL_CHECK_STATUS_ASYNC(
           PS2XDL::ConvertTensorWithCtx(*result, ctx, 0),
           done);
-      
       XDL_CHECK_STATUS_ASYNC(
           PS2XDL::ConvertTensorWithCtx(*fea_stats, ctx, 1),
           done);
-
       done(Status::Ok());
     };
 
@@ -85,7 +83,7 @@ class PsSparsePullWithFeaStatsOp : public xdl::OpKernelAsync {
       break;      
     default:
       XDL_CHECK_COND_ASYNC(
-          false, 
+          false,
           Status::ArgumentError("unsupported vartype"),
           done);
     }

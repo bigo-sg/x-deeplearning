@@ -25,13 +25,15 @@ class SparseTensor(object):
             t._values = None
             t._segments = [3,6,7]
     """
-    def __init__(self, ids, values, segments, indices=None):
+    def __init__(self, ids, values, segments, indices=None, sindices=None, ssegments=None):
         self._ids = ids
         self._values = values
         self._segments = segments
         self._indices = indices 
         self._shape = None
         self._name = None
+        self._sindices = sindices
+        self._ssegments = ssegments
 
     def has_unique_ids(self):
         return self._indices != None
@@ -48,6 +50,13 @@ class SparseTensor(object):
     @property
     def indices(self):
         return self._indices
+
+    @property
+    def sindices(self):
+        return self._sindices
+    @property
+    def ssegments(self):
+        return self._ssegments
 
     @property
     def shape(self):

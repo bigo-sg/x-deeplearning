@@ -37,7 +37,7 @@ Batch *Merger::Run(Batch *batch) {
   for (auto &kv : blocks) {
     auto &name = kv.first;
     auto &blk = kv.second;
-    if (blk.ts_[Block::kKey] == nullptr) {
+    if (blk.ts_[Block::kKey] == nullptr || blk.ts_[Block::kSegment] == nullptr) {
       continue;
     }
     if (blk.ts_[Block::kIndex] == nullptr) {
@@ -46,8 +46,16 @@ Batch *Merger::Run(Batch *batch) {
     if (blk.ts_[Block::kUKey] == nullptr) {
       blk.ts_[Block::kUKey] = new Tensor();
     }
+    if (blk.ts_[Block::kSIndex] == nullptr) {
+      blk.ts_[Block::kSIndex] = new Tensor();
+    }
+
+    if (blk.ts_[Block::kSSegment] == nullptr) {
+      blk.ts_[Block::kSSegment] = new Tensor();
+    }
     auto fn = functor::UniqueFunctor<CpuDevice, int64_t, int32_t>();
-    fn((CpuDevice *)dev_, *blk.ts_[Block::kKey], blk.ts_[Block::kUKey], blk.ts_[Block::kIndex]);
+    fn((CpuDevice *)dev_, *blk.ts_[Block::kKey], *blk.ts_[Block::kSegment],
+       blk.ts_[Block::kUKey], blk.ts_[Block::kIndex], blk.ts_[Block::kSIndex], blk.ts_[Block::kSSegment]);
   }
   return batch;
 }

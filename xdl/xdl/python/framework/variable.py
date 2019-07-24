@@ -190,6 +190,20 @@ class Variable(object):
       otype = self.dtype,
       save_ratio = float(save_ratio) if save_ratio is not None else float(self.get_extra_info('save_ratio', '1.0')))
 
+  def gather_with_fea_stats(self, ids, save_ratio=None,
+                            fea_stats_delta=None, stats_desp=None,
+                            i=None, pattern=None):
+    self._grad_tensor = ids
+    return xdl.ps_sparse_pull_with_fea_stats_op(
+      ids,
+      delta = fea_stats_delta,
+      i = i,
+      var_name = self.name,
+      var_type = self.vtype,
+      otype = self.dtype,
+      save_ratio = float(save_ratio) if save_ratio is not None else float(self.get_extra_info('save_ratio', '1.0')),
+      stats_desp = stats_desp, pattern = pattern)
+
 def trainable_variables():
   return trainable_variables_with_scope(['', cur_model_scope()])
 

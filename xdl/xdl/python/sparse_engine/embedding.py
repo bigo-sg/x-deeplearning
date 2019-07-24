@@ -20,6 +20,7 @@ from __future__ import print_function
 import xdl
 from xdl.python.lib.datatype import *
 from xdl.python.framework.variable import VarType
+from xdl.python.training.training_utils import get_global_step
 
 _EMBEDDING_INFO = {}
 _EMBEDDING_TENSOR = {}
@@ -144,7 +145,7 @@ def embedding(name, sparse_input, initializer, emb_dim, feature_dim,
         idx = sparse_input.indices
         embeddings = var.gather(unique_ids, save_ratio=feature_add_probability)
     else:
-        unique_ids, idx = xdl.unique(sparse_input.ids, itype=DataType.int32)
+        unique_ids, idx, _, _ = xdl.unique(sparse_input.ids, sparse_input.segments, itype=DataType.int32)
         embeddings = var.gather(unique_ids, save_ratio=feature_add_probability)
 
     global _EMBEDDING_TENSOR
@@ -180,6 +181,112 @@ def embedding(name, sparse_input, initializer, emb_dim, feature_dim,
     emb_info = EmbeddingInfo(name, feature_dim, emb_dim, combiner, None, var, embeddings)
     set_embedding_info([var], emb_info)
     return embeddings
+
+
+def embedding_with_fea_stats(name, sparse_input, initializer, emb_dim, feature_dim,
+                             labels_input, stats_desp,
+                             combiner='sum',
+                             vtype=VarType.Index,
+                             length=50,
+                             reverse=False,
+                             batch_read=3000,
+                             feature_add_probability=1.0):
+    """xdl embedding with fea stats
+       Args:
+         name: name for embedding, will be used for declaring variable on ps-plus
+         sparse_input: a sparse tensor represent input data
+         initializer: intializer for the variable on ps-plus
+         emb_dim: embedding dimension
+         feature_dim: sparse input dimension, for pre-allocate memory
+         combiner: reduce operator, support sum|mean
+         labels_input: a tensor represents input labels
+         stats_desp: a str represents stats tags, eg: "#show#click#comment"
+       Returns:
+         a tensor represent embedding result
+       Raises:
+         None
+    """
+    tags = [tag.strip() for tag in stats_desp.strip().split('#') if len(tag.strip())]
+    if labels_input.shape[1] != len(tags):
+        raise Exception("Invalid stats_desp:" + str(stats_desp))
+    stats_desp = '#show#' + stats_desp
+
+    import xdl.python.framework.variable as variable
+    with variable.variable_info(batch_read=batch_read):
+        var = variable.Variable(name=name,
+                                dtype=DataType.float,
+                                shape=[feature_dim, emb_dim],
+                                initializer=initializer,
+                                vtype=vtype,
+                                trainable=True)
+
+    if sparse_input.has_unique_ids():
+        unique_ids = sparse_input.ids
+        idx = sparse_input.indices
+        sindices = sparse_input.sindices
+        ssegments = sparse_input.ssegments
+    else:
+        unique_ids, idx, sindices, ssegments = xdl.unique(sparse_input.ids, sparse_input.segments, itype=DataType.int32)
+
+    fea_stats_delta = xdl.fea_stats(sindices, ssegments, labels_input, itype=DataType.int32, dtype=DataType.float, ltype=DataType.int64, var_name=name);
+    global_step = get_global_step().value
+
+    embeddings, fea_stats = var.gather_with_fea_stats(ids=unique_ids, save_ratio=feature_add_probability,
+                                                      fea_stats_delta=fea_stats_delta, stats_desp=stats_desp,
+                                                      i=global_step, pattern="global_step")
+
+    global _EMBEDDING_TENSOR
+    _EMBEDDING_TENSOR[embeddings] = var
+
+    import xdl.python.sparse_engine.embedding_ops as embedding_ops
+    if combiner == 'sum':
+        embeddings = embedding_ops.ksum(
+            embeddings,
+            idx,
+            sparse_input.values,
+            sparse_input.segments)
+        fea_stats = embedding_ops.fsum(
+            fea_stats,
+            idx,
+            sparse_input.values,
+            sparse_input.segments)
+    elif combiner == 'mean':
+        embeddings = embedding_ops.kmean(
+            embeddings,
+            idx,
+            sparse_input.values,
+            sparse_input.segments)
+        fea_stats = embedding_ops.fmean(
+            fea_stats,
+            idx,
+            sparse_input.values,
+            sparse_input.segments)
+    elif combiner == 'tile':
+        embeddings = embedding_ops.tile(
+            embeddings,
+            idx,
+            sparse_input.values,
+            sparse_input.segments,
+            length,
+            reverse)
+        fea_stats = embedding_ops.ftile(
+            fea_stats,
+            idx,
+            sparse_input.values,
+            sparse_input.segments,
+            length,
+            reverse)
+    else:
+        raise Exception("Unrecognized combiner:" + str(combiner))
+
+    if sparse_input.shape is not None and len(sparse_input.shape) > 0:
+        embeddings.set_shape([sparse_input.shape[0], emb_dim]);
+        fea_stats.set_shape([sparse_input.shape[0], len(tag)]);
+
+    emb_info = EmbeddingInfo(name, feature_dim, emb_dim, combiner, None, var, embeddings)
+    set_embedding_info([var], emb_info)
+    return embeddings, fea_stats
+
 
 def merged_embedding(name, sparse_inputs, initializer, emb_dim, feature_dim,
                      combiner='sum', vtype=VarType.Index, length=50, reverse=False):

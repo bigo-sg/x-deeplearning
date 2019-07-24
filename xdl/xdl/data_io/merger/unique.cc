@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-
+#include <vector>
 #include "xdl/data_io/merger/unique.h"
 #include "xdl/core/utils/logging.h"
 
@@ -22,8 +22,11 @@ namespace functor {
 template <typename T, typename I>
 void UniqueFunctor<CpuDevice, T, I>::operator()(CpuDevice* d,
                                                 const Tensor &in,
+                                                const Tensor &segment,
                                                 Tensor *out,
-                                                Tensor *out_index) {
+                                                Tensor *out_index,
+                                                Tensor *out_sindex,
+                                                Tensor *out_ssegment) {
   auto shape = in.Shape();
   XDL_CHECK(shape.Size() == 1 || shape.Size() == 2);
   size_t id_num = shape[0];
@@ -83,6 +86,33 @@ void UniqueFunctor<CpuDevice, T, I>::operator()(CpuDevice* d,
       buf[it.second * 2 + 1] = pin[it.first * 2 + 1];
     }
   }
+
+  // build sindex and ssegment
+  I* pseg = segment.Raw<I>();
+
+  std::vector<std::vector<I>> sindex_vec(out->Shape()[0]);
+  size_t seg_size = segment.Shape().NumElements();
+  #pragma omp parallel for
+  for (size_t i = 0; i < id_num; ++i) {
+    size_t seg_idx = std::lower_bound(pseg, pseg + seg_size, i + 1) - pseg;
+    #pragma omp critical
+    sindex_vec[*(pindex + i)].push_back(seg_idx);
+  }
+
+  *out_sindex = Tensor(d, TensorShape({id_num}), DataTypeToEnum<I>::v());
+  *out_ssegment = Tensor(d, TensorShape({sindex_vec.size()}), DataTypeToEnum<I>::v());
+  I* psindex = out_sindex->Raw<I>();
+  I* psseg = out_ssegment->Raw<I>();
+
+  size_t i_sindex = 0;
+  size_t i_sseg = 0;
+
+  for (const auto& sindex : sindex_vec) {
+    if (sindex.empty()) { continue;}
+    memcpy(psindex + i_sindex, sindex.data(), sindex.size() * sizeof(I));
+    i_sindex += sindex.size();
+    psseg[i_sseg++] = i_sindex;
+  }
 }
 
 template struct UniqueFunctor<CpuDevice, int64_t, int64_t>;
@@ -95,18 +125,25 @@ template struct UniqueFunctor<CpuDevice, int32_t, int64_t>;
 /*
 template <typename T, typename I>
 Status UniqueCpuOp<T, I>::Compute(OpKernelContext* ctx) {
-  Tensor input, output, out_index;
+  Tensor input, segment, output, out_index, out_ssindex, out_ssegment;
   XDL_CHECK_STATUS(ctx->GetInput(0, &input));
   XDL_CHECK_COND(2 >= input.Shape().Size(),
                  Status::ArgumentError("input dim cann't be greater than 2"));
+
+  XDL_CHECK_STATUS(ctx->GetInput(1, &segment));
+  XDL_CHECK_COND(1 == segment.Shape().Size(),
+                 Status::ArgumentError("segment dim must be 1"));
+
   TensorShape index_shape({input.Shape()[0]});
   XDL_CHECK_STATUS(ctx->AllocateOutput(1, index_shape, &out_index));
 
   CpuDevice* device = dynamic_cast<CpuDevice*>(ctx->GetDevice());
   auto fn = functor::UniqueFunctor<CpuDevice, T, I>();
-  fn(device, input, &output, out_index);
+  fn(device, input, segment, &output, out_index, &out_ssindex, &out_ssegment);
 
   ctx->SetOutput(0, output);
+  ctx->SetOutput(2, out_ssindex);
+  ctx->SetOutput(3, out_ssegment);
   return Status::Ok();
 }
 */
