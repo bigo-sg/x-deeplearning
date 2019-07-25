@@ -129,13 +129,15 @@ class FeatureScoreFilterHook(Hook):
     return [self._global_step.value]
 
   def after_run(self, v):
-    self.gstep_val = v[0] if isinstance(v, list) else v
-    if self.gstep_val - self._last_filter_step >= self._interval_steps:
-      print("FeatureScoreFilterHook running all")
-      xdl.execute(self.generate_filter_ops(self.gstep_val))
-      self._last_filter_step = self.gstep_val
+    if self._interval_steps > 0:
+      self.gstep_val = v[0] if isinstance(v, list) else v
+      if self.gstep_val - self._last_filter_step >= self._interval_steps:
+        print("FeatureScoreFilterHook running all")
+        xdl.execute(self.generate_filter_ops(self.gstep_val))
+        self._last_filter_step = self.gstep_val
 
   def end(self):
-    self.gstep_val = xdl.execute(self._global_step.value)
-    print("FeatureScoreFilterHook running all")
-    xdl.execute(self.generate_filter_ops(self.gstep_val))
+    if self._interval_steps <= 0:
+      self.gstep_val = xdl.execute(self._global_step.value)
+      print("FeatureScoreFilterHook running all")
+      xdl.execute(self.generate_filter_ops(self.gstep_val))
