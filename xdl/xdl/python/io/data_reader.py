@@ -25,28 +25,16 @@ import threading
 
 threadLock = threading.Lock()
 threads = []
-#thread_num=10
-
-#input_list=[]
 class myThread (threading.Thread):
-   def __init__(self, threadID, inputlist, outputlist, converter_file):
+   def __init__(self, threadID, inputlist,  converter_file):
       threading.Thread.__init__(self)
       self.threadID = threadID
       self.input = inputlist
-      self.output = outputlist
       self._converter_file = converter_file
    def run(self):
       print "Starting " + self.name+ " tid "+ str(self.threadID)
-      # Get lock to synchronize threads
-      own_outputlist=[]
       for i in range(len(self.input[self.threadID])):
-         own_outputlist.append(file_parsing(self.input[self.threadID][i],self._converter_file,self.threadID))
-      
-      threadLock.acquire()
-      for i in range(len(own_outputlist)):
-         self.output.append(own_outputlist[i])
-    
-      threadLock.release()
+         file_parsing(self.input[self.threadID][i],self._converter_file,self.threadID)
      
 def file_parsing(path,converter_file, tid):
      currentDirectory = os.getcwd()
@@ -58,6 +46,8 @@ def file_parsing(path,converter_file, tid):
      p=exec_cmd(hdp_cmd)
      if p==0:
         print "after hdp_cmd"+"  "+ str(tid)
+     else:
+        raise ValueError('hadoop download error')    
      rm_cmd = "rm -f {}/{}".format(currentDirectory,gz_filename.strip(".gz"))
      gzip_cmd = "gzip -d {}/{}".format(currentDirectory,gz_filename)
      exec_cmd(rm_cmd)
@@ -66,11 +56,12 @@ def file_parsing(path,converter_file, tid):
      local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
 
      script_cmd = "python {}/{} {}".format(currentDirectory,converter_file,local_path)
+     print script_cmd
      p=exec_cmd(script_cmd)
      if p==0:
         print str(tid)+"finish task"
-     return local_path+".txt"
-
+     else:
+        raise ValueError('python parsing error')
 def exec_cmd(exec_cmd1):
      p = subprocess.call(exec_cmd1,
                          stdout=subprocess.PIPE,
@@ -88,7 +79,7 @@ class DataReader(DataIO):
                  paths=None,
                  meta=None,
                  enable_state=True,
-                 converter_file="main_newData.py", converter_threads=10):
+                 converter_file="", converter_threads=10):
         self._ds_name = ds_name
         self._paths = list()
         self._meta = meta
@@ -130,7 +121,7 @@ class DataReader(DataIO):
             rank=xdl.get_task_index(), size=xdl.get_task_num())
         converted_path=[]
         thread_input= []
-        inputlist=[]
+        
         if self.gz_hdfs_dir!="":
           curr_thread=0
           thread_input.append([])
@@ -151,21 +142,18 @@ class DataReader(DataIO):
              else:
                if curr_thread < ((len(shard_paths)%converter_threads)): 
                   thread_input[curr_thread].append(gz_hdfs_addr)
-               curr_thread = curr_thread+1
-               thread_input.append([])
-               #inputlist=[]
-               if curr_thread >= ((len(shard_paths)%converter_threads)): 
+                  curr_thread = curr_thread+1
+                  thread_input.append([])
+               else:
+                  curr_thread = curr_thread+1
+                  thread_input.append([])
                   thread_input[curr_thread].append(gz_hdfs_addr)
-               #curr_thread = curr_thread+1
-               print curr_thread       
-             print gz_hdfs_addr
-          else:
-             converted_path.append(raw_path)
-        
+        for i in range(len(thread_input)):
+           print str(i)+" thread len "+str(len(thread_input[i]))
         if curr_thread>=0:
           #thread_input.append(inputlist)
-          for i in range(curr_thread):
-            threads_list.append(myThread(i, thread_input, converted_path,self._converter_file))
+          for i in range(curr_thread+1):
+            threads_list.append(myThread(i, thread_input,self._converter_file))
                 
             threads_list[i].start()
           for i in range(curr_thread):
@@ -173,16 +161,10 @@ class DataReader(DataIO):
 
           
         print "end"+"  "+str(datetime.now())      
-        print('data paths:', converted_path)
-        self.add_path(converted_path)
+        print('data paths:', shard_paths)
+        self.add_path(shard_paths)
         if self._meta is not None:
             self.set_meta(self._meta)
-    #def _exec_cmd(self, exec_cmd):
-    #    p = subprocess.call(exec_cmd,
-    #                     stdout=subprocess.PIPE,
-    #                     stderr=subprocess.STDOUT,
-    #                     shell=True)
-    #    return p
     def _decode_path(self, path):
         '''
         hdfs://namenode/path
@@ -205,8 +187,6 @@ class DataReader(DataIO):
                   print "error file dir"
                   return
                 currentDirectory = os.getcwd()
-                
-                #print "after hdp_cmd"
                 dirs_splited = path.split('/')
                 gz_filename = dirs_splited[len(dirs_splited)-1]
                 local_path = "{}/gz_hdfs_{}".format(currentDirectory,gz_filename.strip(".gz"))
