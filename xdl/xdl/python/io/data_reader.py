@@ -12,13 +12,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
+from datetime import datetime
 import sys
 import os
 import xdl
+import subprocess
 from xdl.python import pybind
 from xdl.python.io.data_io import DataIO
 from xdl.python.io.data_sharding import DataSharding
+import threading
+
+
+threadLock = threading.Lock()
+threads = []
+#thread_num=10
+
+#input_list=[]
+class myThread (threading.Thread):
+   def __init__(self, threadID, inputlist, outputlist, converter_file):
+      threading.Thread.__init__(self)
+      self.threadID = threadID
+      self.input = inputlist
+      self.output = outputlist
+      self._converter_file = converter_file
+   def run(self):
+      print "Starting " + self.name+ " tid "+ str(self.threadID)
+      # Get lock to synchronize threads
+      own_outputlist=[]
+      for i in range(len(self.input[self.threadID])):
+         own_outputlist.append(file_parsing(self.input[self.threadID][i],self._converter_file,self.threadID))
+      
+      threadLock.acquire()
+      for i in range(len(own_outputlist)):
+         self.output.append(own_outputlist[i])
+    
+      threadLock.release()
+     
+def file_parsing(path,converter_file, tid):
+     currentDirectory = os.getcwd()
+     hdp_cmd ="hadoop fs -get {} {}".format(path, currentDirectory)
+     dirs_splited = path.split('/')
+     gz_filename = dirs_splited[len(dirs_splited)-1]
+     rm_cmd = "rm -f {}/{}".format(currentDirectory,gz_filename)
+     exec_cmd(rm_cmd)
+     p=exec_cmd(hdp_cmd)
+     if p==0:
+        print "after hdp_cmd"+"  "+ str(tid)
+     rm_cmd = "rm -f {}/{}".format(currentDirectory,gz_filename.strip(".gz"))
+     gzip_cmd = "gzip -d {}/{}".format(currentDirectory,gz_filename)
+     exec_cmd(rm_cmd)
+     exec_cmd(gzip_cmd)
+
+     local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
+
+     script_cmd = "python {}/{} {}".format(currentDirectory,converter_file,local_path)
+     p=exec_cmd(script_cmd)
+     if p==0:
+        print str(tid)+"finish task"
+     return local_path+".txt"
+
+def exec_cmd(exec_cmd1):
+     p = subprocess.call(exec_cmd1,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT,
+                         shell=True)
+     return p
+
+
+
 
 class DataReader(DataIO):
     def __init__(self, ds_name, file_type=pybind.parsers.txt,
@@ -26,13 +87,15 @@ class DataReader(DataIO):
                  namenode="",
                  paths=None,
                  meta=None,
-                 enable_state=True):
+                 enable_state=True,
+                 converter_file="main_newData.py", converter_threads=10):
         self._ds_name = ds_name
         self._paths = list()
         self._meta = meta
         self._fs_type = fs_type
         self._namenode = namenode
-
+        self._converter_file = converter_file
+        self.gz_hdfs_dir=""
         if paths is not None:
             assert isinstance(paths, list), "paths must be a list"
 
@@ -63,13 +126,63 @@ class DataReader(DataIO):
         self._sharding = DataSharding(self.fs())
         self._sharding.add_path(self._paths)
 
-        paths = self._sharding.partition(
+        shard_paths = self._sharding.partition(
             rank=xdl.get_task_index(), size=xdl.get_task_num())
-        print('data paths:', paths)
-        self.add_path(paths)
+        converted_path=[]
+        thread_input= []
+        inputlist=[]
+        if self.gz_hdfs_dir!="":
+          curr_thread=0
+          thread_input.append([])
+        else:
+          curr_thread=-1
+        threads_list=[]
+        print "start"+"  "+str(datetime.now())
+       
+        for raw_path in shard_paths:
+          arr = raw_path.split('/')
+          filename = arr[-1]
+          
+          if filename.startswith('gz_hdfs_'):
+             gz_hdfs_addr = self.gz_hdfs_dir+(filename.strip('gz_hdfs_')).strip('.txt')+'.gz'
+             if len(thread_input[curr_thread])< ((len(shard_paths)/converter_threads)):
+               thread_input[curr_thread].append(gz_hdfs_addr)
+               #inputlist.append(gz_hdfs_addr)               
+             else:
+               if curr_thread < ((len(shard_paths)%converter_threads)): 
+                  thread_input[curr_thread].append(gz_hdfs_addr)
+               curr_thread = curr_thread+1
+               thread_input.append([])
+               #inputlist=[]
+               if curr_thread >= ((len(shard_paths)%converter_threads)): 
+                  thread_input[curr_thread].append(gz_hdfs_addr)
+               #curr_thread = curr_thread+1
+               print curr_thread       
+             print gz_hdfs_addr
+          else:
+             converted_path.append(raw_path)
+        
+        if curr_thread>=0:
+          #thread_input.append(inputlist)
+          for i in range(curr_thread):
+            threads_list.append(myThread(i, thread_input, converted_path,self._converter_file))
+                
+            threads_list[i].start()
+          for i in range(curr_thread):
+            threads_list[i].join()
+
+          
+        print "end"+"  "+str(datetime.now())      
+        print('data paths:', converted_path)
+        self.add_path(converted_path)
         if self._meta is not None:
             self.set_meta(self._meta)
-
+    #def _exec_cmd(self, exec_cmd):
+    #    p = subprocess.call(exec_cmd,
+    #                     stdout=subprocess.PIPE,
+    #                     stderr=subprocess.STDOUT,
+    #                     shell=True)
+    #    return p
     def _decode_path(self, path):
         '''
         hdfs://namenode/path
@@ -85,19 +198,24 @@ class DataReader(DataIO):
             namenode = arr[2]
             fpath = '/'+arr[3]
             if arr[3].endswith(".gz"):
+                arr2 = path.split('/')
+                if self.gz_hdfs_dir =="":
+                   self.gz_hdfs_dir=path.strip(arr2[-1])
+                if self.gz_hdfs_dir!= path.strip(arr2[-1]):
+                  print "error file dir"
+                  return
                 currentDirectory = os.getcwd()
-                os.system("/data/opt/hadoop-3.1.0/bin/hadoop fs -get {} {}".format(path, currentDirectory))
                 
+                #print "after hdp_cmd"
                 dirs_splited = path.split('/')
                 gz_filename = dirs_splited[len(dirs_splited)-1]
-                os.system("gunzip {}/{}".format(currentDirectory,gz_filename))
-                mio_local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
+                local_path = "{}/gz_hdfs_{}".format(currentDirectory,gz_filename.strip(".gz"))
+                xdl_file = open(local_path+".txt", "w")
+                xdl_file.close()
                 
-                os.system("python {}/main_newData.py {}".format(currentDirectory,mio_local_path))
-                #print("{}/main_newData.py {}".format(os.path.dirname(os.path.abspath(__file__)),mio_local_path))
-                fpath =  mio_local_path+".txt"
+                fpath =  local_path+".txt"
                 fs_type = pybind.fs.local
-                #os.system("rm {}".format(mio_local_path))
+                
         elif path.startswith('kafka://'):
             fs_type = pybind.fs.kafka
             arr = path.split('/', 2)
