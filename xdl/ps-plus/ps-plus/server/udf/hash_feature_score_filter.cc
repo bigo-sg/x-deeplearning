@@ -50,6 +50,10 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
     }
 
     auto& items = map.items;
+    if (!items.size()) {
+      return Status::Ok();
+    }
+
     //1. decay fea stats
     auto& stats_vec = variable->GetStatsVec();
     LOG_ASSERT(stats_vec.size()) << "fea stats num eq 0.";
@@ -98,8 +102,9 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
 
     //3. compute fea score
     auto score = (show_vector - clk_vector) * nonclk_weight + clk_vector * clk_weight;
-    printf("HashFeatureScoreFilter for %s fea score min %f max %f\n", 
-           ctx->GetVariableName().c_str(), score.minCoeff(), score.maxCoeff());
+    std::string var_name = ctx->GetVariableName();
+    printf("HashFeatureScoreFilter for %s fea score min %f max %f, cur_step:%ld\n",
+           var_name.c_str(), score.minCoeff(), score.maxCoeff(), cur_step);
 
     //4. select keys
     std::vector<int64_t> keys;
@@ -117,8 +122,8 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
       PS_CHECK_STATUS(StreamingModelUtils::DelHash(ctx->GetVariableName(), keys));
     }
 
-    printf("HashFeatureScoreFilter for %s origin= %ld, clear= %ld\n", 
-           ctx->GetVariableName().c_str(), items.size(), keys.size() / 2);
+    printf("HashFeatureScoreFilter for %s origin= %ld, clear= %ld\n",
+           var_name.c_str(), items.size(), keys.size() / 2);
 
     return Status::Ok();
   }
