@@ -55,7 +55,6 @@ class IOAntKafka: public IOAnt {
         XDL_LOG(DEBUG) << "Kafka consume read " << msg->len();
         std::string data;
         data.assign((const char*)msg->payload(), msg->len());
-        XDL_LOG(INFO) << "kafka message:" << data;
         break;
       }
       default:
