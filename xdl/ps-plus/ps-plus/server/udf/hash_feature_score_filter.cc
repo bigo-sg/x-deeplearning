@@ -55,7 +55,7 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
     }
 
     //1. decay fea stats
-    auto& stats_vec = variable->GetStatsVec();
+    auto stats_vec = variable->GetStatsVec();
     LOG_ASSERT(stats_vec.size()) << "fea stats num eq 0.";
 
     Tensor* tensor = nullptr;

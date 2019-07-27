@@ -56,7 +56,7 @@ class Variable {
   Status ReShapeId(size_t id);
   void ClearIds(const std::vector<size_t>& id);
   void SetStatsVec(const std::vector<std::string>& stats);
-  const std::vector<std::string>& GetStatsVec() { return stats_vec_; }
+  std::vector<std::string> GetStatsVec() { QRWLocker lock(stats_lock_, QRWLocker::kSimpleRead); return stats_vec_; }
 
   // Used for Save and Restore
   const std::unordered_map<std::string, Slot>& GetSlots() { return slots_; }
@@ -69,6 +69,7 @@ class Variable {
   // <variable_lock_.write, None>
   QRWLock variable_lock_; // Guard variable
   QRWLock slots_lock_; // Guard the slots unordered_map
+  QRWLock stats_lock_; // Guard the stats vec
 
   std::unique_ptr<Tensor> data_;
   std::unique_ptr<Data> slicer_;

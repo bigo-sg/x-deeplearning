@@ -40,6 +40,7 @@ Tensor* Variable::GetSlot(const std::string& name, const std::function<Slot()>& 
 }
 
 void Variable::SetStatsVec(const std::vector<std::string>& stats) {
+  QRWLocker lock(stats_lock_, QRWLocker::kWrite);
   LOG_ASSERT(stats.size()) << "fea stats num eq 0.";
 
   if (!stats_vec_.size()) {
