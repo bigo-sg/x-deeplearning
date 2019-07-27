@@ -18,6 +18,8 @@ limitations under the License.
 #include <memory>
 #include <omp.h>
 #include <stdlib.h>
+#include <iostream>
+#include <map>
 
 #include "xdl/core/utils/logging.h"
 
@@ -33,16 +35,15 @@ namespace io {
 /// Kafka IO ant
 class IOAntKafka: public IOAnt {
  public:
-  IOAntKafka(RdKafka::Topic *topic, RdKafka::Consumer *consumer, int partition) : topic_(topic), consumer_(consumer), partition_(partition), offset_(0) { }
+  IOAntKafka(RdKafka::KafkaConsumer *consumer) : consumer_(consumer) { }
   ~IOAntKafka() { 
-    consumer_->stop(topic_, partition_);
-    delete topic_;
+    consumer_->close();
     delete consumer_;
   }
 
   /*!\brief read data */
   virtual ssize_t Read(char *data, size_t len) override {
-    std::unique_ptr<RdKafka::Message> msg(consumer_->consume(topic_, partition_, kTimeout));
+    std::unique_ptr<RdKafka::Message> msg(consumer_->consume(3000));
     switch (msg->err()) {
       case RdKafka::ERR__TIMED_OUT:
         XDL_LOG(WARNING) << "Kafka consume time out";
@@ -50,12 +51,15 @@ class IOAntKafka: public IOAnt {
       case RdKafka::ERR__PARTITION_EOF:
         XDL_LOG(WARNING) << "Kafka consume reach end of partition";
         return 0;
-      case RdKafka::ERR_NO_ERROR:
+      case RdKafka::ERR_NO_ERROR:{
         XDL_LOG(DEBUG) << "Kafka consume read " << msg->len();
+        std::string data;
+        data.assign((const char*)msg->payload(), msg->len());
+        XDL_LOG(INFO) << "kafka message:" << data;
         break;
-
+      }
       default:
-        XDL_LOG(ERROR) << "Kafka consume fail! [" << topic_ << "," << partition_ << "]";
+        XDL_LOG(ERROR) << "Kafka consume fail! ";
         return 0;
     }
     memcpy(data, msg->payload(), msg->len());
@@ -70,24 +74,28 @@ class IOAntKafka: public IOAnt {
 
   /*!\brief seek to offset */
   virtual off_t Seek(off_t offset) override {
-    offset_ = offset;
-    consumer_->stop(topic_, partition_);
-    RdKafka::ErrorCode err = consumer_->start(topic_, partition_, offset_);
-    if (err != RdKafka::ERR_NO_ERROR) {
-      XDL_LOG(ERROR) << "Failed to start consumer for offset " << offset_;
-      return -1;
-    }
-    return offset_;
+    XDL_LOG(ERROR) << "kafka stream not support seek";
+    return -1;
   }
 
  protected:
-  RdKafka::Topic *topic_;
-  RdKafka::Consumer *consumer_;
-  int partition_;
+  RdKafka::KafkaConsumer *consumer_;
   off_t offset_;
 };
 
-IOAnt *FileSystemKafka::GetAnt(const char *path, char mode) {
+IOAnt *FileSystemKafka::GetAnt(const char *path, char mode) { 
+  XDL_LOG(INFO) << "KafakGetAnt " << path  << " " << mode;
+  
+  /* Get group id and topic from 'path' argument */
+  size_t pos = std::string(path).find(kSeparator);
+  if (pos == std::string::npos) {
+    XDL_LOG(ERROR) << "Path of Kafka should be format of 'group_id:topic'";
+    return nullptr;
+  }
+  std::string group_id(path, pos);
+  std::string topic(path + pos +1);
+  XDL_LOG(INFO) << "consumer " << topic << " by " << group_id << " from " << namenode_;
+
   std::string errstr;
   RdKafka::Conf *conf = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
   if (!conf) {
@@ -95,9 +103,9 @@ IOAnt *FileSystemKafka::GetAnt(const char *path, char mode) {
     return nullptr;
   }
   conf->set("metadata.broker.list", namenode_, errstr);
-  conf->set("group.id", "0", errstr);
+  conf->set("group.id", group_id, errstr);
 
-  RdKafka::Consumer *consumer = RdKafka::Consumer::create(conf, errstr);
+  RdKafka::KafkaConsumer *consumer = RdKafka::KafkaConsumer::create(conf, errstr);
   if (!consumer) {
     XDL_LOG(ERROR) << "Failed to create Kafkaconsumer for " << namenode_
                << " [" << errstr << "]";
@@ -110,31 +118,17 @@ IOAnt *FileSystemKafka::GetAnt(const char *path, char mode) {
     XDL_LOG(ERROR) << "Failed to create tconf";
     return nullptr;
   }
-
-  /* Get topic string and partition from 'path' argument */
-  size_t pos = std::string(path).find(kSeparator);
-  if (pos == std::string::npos) {
-    XDL_LOG(ERROR) << "Path of Kafka should be format of 'topic:partition'";
-    return nullptr;
-  }
-  std::string topic_str(path, pos);
-  int partition = atoi(path + pos + 1);
-
-  RdKafka::Topic *topic = RdKafka::Topic::create(consumer, topic_str, tconf, errstr);
-  if (!topic) {
-    XDL_LOG(ERROR) << "Failed to create topic: "
-               << " [" << errstr << "]";
-    return nullptr;
-  }
   delete tconf;
 
-  RdKafka::ErrorCode err = consumer->start(topic, partition, 0);
+  std::vector<std::string> topics;
+  topics.push_back(topic);
+  RdKafka::ErrorCode err = consumer->subscribe(topics);
   if (err != RdKafka::ERR_NO_ERROR) {
     XDL_LOG(ERROR) << "Failed to start consumer";
     return nullptr;
   }
 
-  return new IOAntKafka(topic, consumer, partition);
+  return new IOAntKafka(consumer);
 }
 
 bool FileSystemKafka::IsReg(const char *path) {
@@ -168,8 +162,15 @@ size_t FileSystemKafka::Size(const char *path) {
 FileSystemKafka::~FileSystemKafka() { }
 
 FileSystem *FileSystemKafka::Get(const char* namenode) {
-  static std::shared_ptr<FileSystemKafka> inst(new FileSystemKafka(namenode));
-  return inst.get();
+  static std::map<std::string, std::shared_ptr<FileSystemKafka> > insts;
+  std::string name(namenode);
+  auto iter = insts.find(name);
+  if(iter == insts.end()){
+      std::shared_ptr<FileSystemKafka> inst(new FileSystemKafka(namenode));
+      insts[name] = inst;
+      return inst.get();
+  }
+  return iter->second.get();
 }
 
 FileSystemKafka::FileSystemKafka(const char* namenode) : namenode_(namenode) {

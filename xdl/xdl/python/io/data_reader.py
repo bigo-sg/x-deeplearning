@@ -18,7 +18,7 @@ import os
 import xdl
 from xdl.python import pybind
 from xdl.python.io.data_io import DataIO
-from xdl.python.io.data_sharding import DataSharding
+from xdl.python.io.data_sharding import build_data_sharding
 
 class DataReader(DataIO):
     def __init__(self, ds_name, file_type=pybind.parsers.txt,
@@ -60,12 +60,11 @@ class DataReader(DataIO):
                                          enable_state=enable_state)
 
         # add path after failover
-        self._sharding = DataSharding(self.fs())
+        self._sharding = build_data_sharding(self._fs_type, self.fs())
         self._sharding.add_path(self._paths)
-
-        paths = self._sharding.partition(
-            rank=xdl.get_task_index(), size=xdl.get_task_num())
+        paths = self._sharding.partition(rank=xdl.get_task_index(), size=xdl.get_task_num())
         print('data paths:', paths)
+
         self.add_path(paths)
         if self._meta is not None:
             self.set_meta(self._meta)
@@ -99,13 +98,25 @@ class DataReader(DataIO):
                 fs_type = pybind.fs.local
                 #os.system("rm {}".format(mio_local_path))
         elif path.startswith('kafka://'):
-            fs_type = pybind.fs.kafka
-            arr = path.split('/', 2)
-            assert len(arr) == 3
-            namenode = arr[2]
+            fs_type, namenode, fpath = self._decode_kafka_path(path)
         else:
             assert '://' not in path, "Unsupported path: %s" % path
             fpath = path
 
+        print('decode path', fs_type, namenode, fpath)
+        return fs_type, namenode, fpath
+
+    def _decode_kafka_path(self, path):
+        '''
+        we use the high level api to consume a kafka topic
+        path format: kafka://<bootstrap_servers>/group_id:topic
+        for example: kafka://kafka1:9092,kafka2:9092/sandbox_group:sandbox_topic
+        '''
+        fs_type = pybind.fs.kafka
+        segs = path.split('/', 2)
+        assert len(segs) == 3
+        segs= segs[2].split('/', 1)
+        namenode = segs[0]
+        fpath = segs[1]
         return fs_type, namenode, fpath
 
