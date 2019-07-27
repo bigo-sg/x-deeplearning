@@ -15,6 +15,7 @@
 
 import os
 import re
+from xdl.python import pybind
 
 class DataSharding(object):
     def __init__(self, fs):
@@ -92,3 +93,22 @@ class DataSharding(object):
 
         return self._paths
 
+class KafkaDataSharding():
+    def __init__(self, fs):
+        self._fs = fs
+        self._paths = []
+    def add_path(self, paths):
+        assert len(self._paths) == 0
+        if isinstance(paths, basestring):
+            self._paths.append(paths)
+            return
+        for p in paths:
+            self._paths.append(p)
+    def partition(self, rank, size):
+        return self._paths
+
+def build_data_sharding(fs_type, fs):
+    if fs_type == pybind.fs.kafka:
+        return KafkaDataSharding(fs)
+    else:
+        return DataSharding(fs)
