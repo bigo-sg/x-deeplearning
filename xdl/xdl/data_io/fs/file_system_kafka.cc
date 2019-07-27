@@ -20,6 +20,7 @@ limitations under the License.
 #include <stdlib.h>
 #include <iostream>
 #include <map>
+#include <mutex>
 
 #include "xdl/core/utils/logging.h"
 
@@ -37,8 +38,10 @@ class IOAntKafka: public IOAnt {
  public:
   IOAntKafka(RdKafka::KafkaConsumer *consumer) : consumer_(consumer) { }
   ~IOAntKafka() { 
-    consumer_->close();
-    delete consumer_;
+    if(consumer_ != nullptr){
+      consumer_->close();
+      delete consumer_;
+    }
   }
 
   /*!\brief read data */
@@ -58,7 +61,9 @@ class IOAntKafka: public IOAnt {
         break;
       }
       default:
-        XDL_LOG(ERROR) << "Kafka consume fail! ";
+        XDL_LOG(ERROR) << "Kafka consume fail! " << msg->topic()
+            << " " << msg->partition() 
+            << " " << msg->offset();
         return 0;
     }
     memcpy(data, msg->payload(), msg->len());
@@ -161,8 +166,10 @@ size_t FileSystemKafka::Size(const char *path) {
 FileSystemKafka::~FileSystemKafka() { }
 
 FileSystem *FileSystemKafka::Get(const char* namenode) {
+  static std::mutex mutex_;
   static std::map<std::string, std::shared_ptr<FileSystemKafka> > insts;
   std::string name(namenode);
+  std::unique_lock<std::mutex> lck(mutex_);
   auto iter = insts.find(name);
   if(iter == insts.end()){
       std::shared_ptr<FileSystemKafka> inst(new FileSystemKafka(namenode));
