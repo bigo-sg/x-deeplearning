@@ -387,7 +387,8 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
         const std::string &var_name, 
         CheckpointUtils::VariableStruct *var,
         size_t thread_id,
-        size_t total_threads){
+        size_t total_threads,
+        Tensor* fea_score){
 
   if(thread_id >= var->hash_slicer.items.size()){
     return;
@@ -408,8 +409,14 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
   auto piece_size = sizeof(int64_t) + sizeof(float) * slicer_size;
   std::vector<char> buf(piece_size);
   char * buf_ptr = buf.data();
+
+  float export_threshold = var->export_threshold;
+  float* pscore = nullptr;
+  if (fea_score) { pscore = fea_score->Raw<float>();}
+
   for (size_t i = thread_id; i < var->hash_slicer.items.size(); i += total_threads) {
     ps::HashMapItem& item = var->hash_slicer.items[i];
+    if (pscore && pscore[item.id] < export_threshold) {continue; }
     CASES(var->data.Type(),
     do {
       T* raw = var->data.Raw<T>();
@@ -428,9 +435,17 @@ Status CheckpointUtils::SaveSparseVariableBinary(const std::string &var_name, Va
   std::vector<std::thread*> threads;
   size_t thread_num = 10;
   auto file_name = sub_dir + "/"  + VariableNameToFileName(var_name, part);
+
+  std::string slot_name = "fea_score";
+  auto iter = var->slots.find(slot_name);
+  Tensor* fea_scores = nullptr;
+  if (iter != var->slots.end()) {
+    fea_scores = iter->second.tensor.get();
+  }
+
   for(size_t i = 0; i < thread_num; ++i){
     threads.push_back(new std::thread(SaveSparseVariableBinaryThread, path_,
-                file_name, var, i, thread_num));
+                file_name, var, i, thread_num, fea_scores));
   }
 
   for(size_t i = 0; i < thread_num; ++i){
@@ -456,6 +471,7 @@ Status CheckpointUtils::VariableToStruct(const std::unique_ptr<Variable>& var, V
     if (ret) {
       return Status::Unknown("HashMap GetHashKeys Internal Error");
     }
+    vs->export_threshold = var->GetFeaExportThreshold();
   } else {
     return Status::NotImplemented("Not Implemented variable slicer type");
   }

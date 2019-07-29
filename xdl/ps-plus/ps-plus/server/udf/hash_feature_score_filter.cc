@@ -20,16 +20,19 @@ limitations under the License.
 #include "ps-plus/common/hashmap.h"
 #include "ps-plus/server/streaming_model_utils.h"
 #include "ps-plus/server/udf/simple_udf.h"
+#include "ps-plus/common/initializer/constant_initializer.h"
 
 namespace ps {
 namespace server {
 namespace udf {
 
-class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int64_t> {
+class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, float ,int64_t> {
  public:
-  virtual Status SimpleRun(UdfContext* ctx, const float& decay_rate, 
-                           const float& nonclk_weight, const float& clk_weight, 
-                           const float& threshold, const int64_t& cur_step) const {
+  virtual Status SimpleRun(UdfContext* ctx, const float& decay_rate,
+                           const float& nonclk_weight, const float& clk_weight,
+                           const float& train_threshold,
+                           const float& export_threshold,
+                           const int64_t& cur_step) const {
     Variable* variable = GetVariable(ctx);
     if (variable == nullptr) {
       return Status::ArgumentError("HashFeatureScoreFilter: Variable should not be empty");
@@ -53,6 +56,8 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
     if (!items.size()) {
       return Status::Ok();
     }
+
+    variable->SetFeaExportThreshold(export_threshold);
 
     //1. decay fea stats
     auto stats_vec = variable->GetStatsVec();
@@ -106,10 +111,14 @@ class HashFeatureScoreFilter : public SimpleUdf<float, float, float, float, int6
     printf("HashFeatureScoreFilter for %s fea score min %f max %f, cur_step:%ld\n",
            var_name.c_str(), score.minCoeff(), score.maxCoeff(), cur_step);
 
-    //4. select keys
+    //4. select keys and store fea score
     std::vector<int64_t> keys;
+    Tensor* fea_scores = variable->GetVariableLikeSlot("fea_score", DataType::kFloat, TensorShape(),
+                                                       []{ return new initializer::ConstantInitializer(0); });
+    float* pscores = fea_scores->Raw<float>();
     for (size_t i = 0; i < items.size(); ++i) {
-      if (score(i) < threshold) {
+      pscores[items[i].id] = score(i);
+      if (score(i) < train_threshold) {
         keys.push_back(items[i].x);
         keys.push_back(items[i].y);
       }

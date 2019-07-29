@@ -32,7 +32,8 @@ class PsFeatureScoreFilterOp : public xdl::OpKernelAsync {
     XDL_CHECK_STATUS(ctx->GetAttr("decay_rate", &decay_rate_));
     XDL_CHECK_STATUS(ctx->GetAttr("nonclk_weight", &nonclk_weight_));
     XDL_CHECK_STATUS(ctx->GetAttr("clk_weight", &clk_weight_));
-    XDL_CHECK_STATUS(ctx->GetAttr("threshold", &threshold_));
+    XDL_CHECK_STATUS(ctx->GetAttr("train_threshold", &train_threshold_));
+    XDL_CHECK_STATUS(ctx->GetAttr("export_threshold", &export_threshold_));
     return Status::Ok();
   }
 
@@ -58,16 +59,18 @@ class PsFeatureScoreFilterOp : public xdl::OpKernelAsync {
                             ps::client::UdfData(1),
                             ps::client::UdfData(2),
                             ps::client::UdfData(3),
-                            ps::client::UdfData(4));
+                            ps::client::UdfData(4),
+                            ps::client::UdfData(5));
 
     std::vector<ps::client::Partitioner*> spliters{
       new ps::client::partitioner::Broadcast,
       new ps::client::partitioner::Broadcast,
       new ps::client::partitioner::Broadcast,
       new ps::client::partitioner::Broadcast,
+      new ps::client::partitioner::Broadcast,
       new ps::client::partitioner::Broadcast};
 
-    client->Process(udf, var_name_, client->Args(decay_rate_, nonclk_weight_, clk_weight_, threshold_, cur_step),
+    client->Process(udf, var_name_, client->Args(decay_rate_, nonclk_weight_, clk_weight_, train_threshold_, export_threshold_, cur_step),
                     spliters, {}, outputs, cb);
   }
 
@@ -77,7 +80,8 @@ class PsFeatureScoreFilterOp : public xdl::OpKernelAsync {
   float decay_rate_;
   float nonclk_weight_;
   float clk_weight_;
-  float threshold_;
+  float train_threshold_;
+  float export_threshold_;
 };
 
 XDL_DEFINE_OP(PsFeatureScoreFilterOp)
@@ -86,7 +90,8 @@ XDL_DEFINE_OP(PsFeatureScoreFilterOp)
   .Attr("decay_rate", AttrValue::kFloat)
   .Attr("nonclk_weight", AttrValue::kFloat)
   .Attr("clk_weight", AttrValue::kFloat)
-  .Attr("threshold", AttrValue::kFloat);
+  .Attr("train_threshold", AttrValue::kFloat)
+  .Attr("export_threshold", AttrValue::kFloat);
   
 
 XDL_REGISTER_KERNEL(PsFeatureScoreFilterOp, PsFeatureScoreFilterOp).Device("CPU");

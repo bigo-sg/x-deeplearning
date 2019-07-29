@@ -58,6 +58,9 @@ class Variable {
   void SetStatsVec(const std::vector<std::string>& stats);
   std::vector<std::string> GetStatsVec() { QRWLocker lock(stats_lock_, QRWLocker::kSimpleRead); return stats_vec_; }
 
+  void SetFeaExportThreshold(float fea_export_threshold) { fea_export_threshold_ = fea_export_threshold; }
+  float GetFeaExportThreshold() { return fea_export_threshold_; }
+
   // Used for Save and Restore
   const std::unordered_map<std::string, Slot>& GetSlots() { return slots_; }
   void SetSlots(std::unordered_map<std::string, Slot>&& slots) { slots_ = std::move(slots); }
@@ -75,6 +78,7 @@ class Variable {
   std::unique_ptr<Data> slicer_;
   std::unordered_map<std::string, Slot> slots_;
   std::vector<std::string> stats_vec_;
+  float fea_export_threshold_;
 };
 
 }

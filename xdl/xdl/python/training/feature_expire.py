@@ -103,14 +103,15 @@ class GlobalStepAndL2FilterHook(Hook):
     xdl.execute(self.generate_filter_ops(self.gstep_val))
 
 class FeatureScoreFilterHook(Hook):
-  def __init__(self, vars, interval_steps, decay_rate, nonclk_weight, clk_weight, threshold):
+  def __init__(self, vars, interval_steps, decay_rate, nonclk_weight, clk_weight, train_threshold, export_threshold):
     super(FeatureScoreFilterHook, self).__init__()
     self._vars = vars
     self._interval_steps = interval_steps
     self._decay_rate = decay_rate
     self._nonclk_weight = nonclk_weight
     self._clk_weight = clk_weight
-    self._threshold = threshold
+    self._train_threshold = train_threshold
+    self._export_threshold = export_threshold
 
     self._global_step = get_global_step()
     self._last_filter_step = 0
@@ -121,7 +122,8 @@ class FeatureScoreFilterHook(Hook):
     for var_name in self._vars:
       filter_op = xdl.ps_feature_score_filter_op(current_step, var_name,
                                                  self._decay_rate, self._nonclk_weight,
-                                                 self._clk_weight, self._threshold)
+                                                 self._clk_weight, self._train_threshold,
+                                                 self._export_threshold)
       all_ops.append(filter_op)
     return all_ops
 

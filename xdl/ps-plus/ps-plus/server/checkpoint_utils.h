@@ -33,6 +33,7 @@ class CheckpointUtils {
     size_t index_slicer;
     Tensor data;
     std::unordered_map<std::string, Variable::Slot> slots;
+    float export_threshold;
   };
   Status LoadVariable(const std::string& var_name, size_t part, VariableStruct* var);
  private:
