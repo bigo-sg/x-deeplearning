@@ -112,7 +112,7 @@ Status CheckpointUtils::LoadVariables(
 }
 
 Status CheckpointUtils::SaveVariables(
-    size_t id,
+    size_t id, uint64_t save_mode,
     const std::unordered_map<std::string, std::unique_ptr<Variable>>& vars) {
   for (auto&& item : vars) {
     auto iter = infos_.find(item.first);
@@ -138,7 +138,7 @@ Status CheckpointUtils::SaveVariables(
     }
     VariableStruct vs;
     PS_CHECK_STATUS(VariableToStruct(item.second, &vs));
-    PS_CHECK_STATUS(SaveVariable(iter->first, part, &vs));
+    PS_CHECK_STATUS(SaveVariable(iter->first, part, &vs, save_mode));
   }
   return Status::Ok();
 }
@@ -361,19 +361,21 @@ Status CheckpointUtils::LoadVariable(const std::string& var_name, size_t part, V
   return LoadVariable(s.get(), var);
 }
 
-Status CheckpointUtils::SaveVariable(const std::string& var_name, size_t part, VariableStruct* var) {
+Status CheckpointUtils::SaveVariable(const std::string& var_name, size_t part, VariableStruct* var, uint64_t save_mode) {
   std::unique_ptr<FileSystem::WriteStream> s;
   auto raw_file_name = VariableNameToFileName(var_name, part);
   PS_CHECK_STATUS(FileSystem::OpenWriteStreamAny(path_ + '/' + raw_file_name, &s));
   PS_CHECK_STATUS(SaveVariable(s.get(), var));
   
-  return SaveVariableExt(var_name, var, part);
+  return SaveVariableExt(var_name, var, part, save_mode);
 }
 
-Status CheckpointUtils::SaveVariableExt(const std::string &var_name, VariableStruct *var, size_t part){
+Status CheckpointUtils::SaveVariableExt(const std::string &var_name, VariableStruct *var, size_t part, uint64_t save_mode){
   switch (var->type) {
   case VariableStruct::kHashSlicer:{
-    PS_CHECK_STATUS(SaveSparseVariableBinary(var_name, var, part));
+    if(save_mode & 0x01){
+      PS_CHECK_STATUS(SaveSparseVariableBinary(var_name, var, part));
+    }
     break;
   default:
     break;

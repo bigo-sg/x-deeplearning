@@ -25,8 +25,9 @@ limitations under the License.
 namespace xdl {
 
 class PsSaveOp : public xdl::OpKernelAsync {
- public:
+public:
   Status Init(OpKernelConstruction* ctx) override {
+    XDL_CHECK_STATUS(ctx->GetAttr("save_mode", &save_mode_));
     return Status::Ok();
   }
 
@@ -41,12 +42,20 @@ class PsSaveOp : public xdl::OpKernelAsync {
       done(Status::Ok());
     };
 
-    client->Save(ckpt_version, cb);
+    client->Save(ckpt_version, save_mode, click_show_threshold_, cb);
   }
+private:
+  uint64_t save_mode_;
 };
 
+/**
+ * save_mode: bit mark. 0x01 save binary embedding
+ * click_show_threshold: use to filt out embedding ids by click show stat.
+ *     click_show_threshold = -1: defuatl value. not filt
+*/
 XDL_DEFINE_OP(PsSaveOp)
-  .Input("ckpt_version", DataType::kInt8);
+  .Input("ckpt_version", DataType::kInt8)
+  .Attr("save_mode", AttrValue::kFloat);
 
 XDL_REGISTER_KERNEL(PsSaveOp, PsSaveOp).Device("CPU");
 

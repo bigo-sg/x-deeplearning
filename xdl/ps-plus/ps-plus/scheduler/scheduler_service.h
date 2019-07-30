@@ -31,6 +31,7 @@ namespace ps {
 namespace scheduler {
 
 class SchedulerImpl;
+class SaveOpOption;
 class SchedulerService {
  public:
   SchedulerService(SchedulerImpl* impl, 
@@ -65,6 +66,7 @@ class SchedulerService {
       int server_id,
       Version version,
       const std::string& checkpoint,
+      const SaveOpOption* opt,
       const std::vector<VariableInfo>& info,
       std::function<void(Status)> cb);
   void ServerRestore(

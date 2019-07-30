@@ -44,6 +44,22 @@ enum OpCode {
 
 using OpCallback = std::function<void (const ps::Status&)>;
 
+class OpOption{
+public:
+  OpOption(){}
+  virtual ~OpOption(){}
+};
+
+class SaveOpOption : public OpOption{
+public:
+  SaveOpOption():save_mode(0){}
+  virtual ~SaveOpOption(){}
+  uint64_t save_mode;
+};
+enum SaveMode{
+  kSaveBinEmb = 1
+};
+
 class SchedulerImpl {
  public:
   SchedulerImpl(
@@ -62,7 +78,7 @@ class SchedulerImpl {
   Version GetVersion();
   Status RegisterServer(const ServerInfo& server);
   Status GetClusterInfo(const Version version, ClusterInfo* result);
-  void Save(Version version, const std::string& checkpoint, OpCallback cb);
+  void Save(Version version, const std::string& checkpoint, uint64_t save_mode, OpCallback cb);
   void Restore(Version version, const std::string& checkpoint, OpCallback cb);
   void TriggerStreamingDense(Version version, OpCallback cb);
   void TriggerStreamingSparse(Version version, OpCallback cb);
@@ -98,10 +114,11 @@ class SchedulerImpl {
   OpCode op_code_;
   std::string op_checkpoint_;
   OpCallback op_cb_;
+  std::shared_ptr<OpOption> op_option_;
   std::condition_variable op_cv_;
   std::string OpName(OpCode code);
   void WaitForOp();
-  void AssignOp(OpCode code, Version version, const std::string& checkpoint,
+  void AssignOp(OpCode code, Version version, const std::string& checkpoint, std::shared_ptr<OpOption> opt,
                 OpCallback cb);
 
   void Main();
@@ -111,7 +128,7 @@ class SchedulerImpl {
 
   std::vector<ps::VariableInfo> variable_info_;
   Status InternalRestore(const std::string& checkpoint);
-  Status InternalSave(const std::string& checkpoint);
+  Status InternalSave(const std::string& checkpoint, std::shared_ptr<SaveOpOption> opt);
   Status InternalTriggerStreamingDense(Version version);
   Status InternalTriggerStreamingSparse(Version version);
   Status InternalTriggerStreamingHash(Version version);

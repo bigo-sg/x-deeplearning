@@ -41,7 +41,7 @@ class ClientWrapper {
   virtual void UpdateVariableVisitInfo(const std::string& name, int64_t id_num, const Callback& cb) = 0;
   virtual void Process(const std::string& var_name, size_t server_id, size_t udf_id, const std::vector<Data*>& input, std::vector<Data*>* output, const Callback& cb) = 0;
   virtual void RegisterUdf(size_t server_id, const UdfChain& def, const Callback& cb) = 0;
-  virtual void Save(const std::string& version, const Callback& cb) = 0;
+  virtual void Save(const std::string& version,  uint64_t save_mode, const Callback& cb) = 0;
   virtual void Restore(const std::string& version, const Callback& cb) = 0;
   virtual void ModelServerForward(int server_type, int server_id, const Tensor& ids, std::unique_ptr<Tensor>* rst, const Callback& cb) = 0;
   virtual void ModelServerBackward(int server_type, int server_id, const Tensor& ids, const Tensor& grads, const Callback& cb) = 0;

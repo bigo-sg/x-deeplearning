@@ -69,13 +69,14 @@ Status Server::RunUdfChain(Version ver, size_t udf, const std::string& variable_
   return ret;
 }
 
-Status Server::Save(Version ver, const std::string& checkpoint, const VariableInfoCollection& info) {
+Status Server::Save(Version ver, const std::string& checkpoint, 
+  uint64_t save_mode, float click_show_threshold, const VariableInfoCollection& info) {
   QRWLocker lock(server_lock_, QRWLocker::kSimpleRead);
   if (ver != ver_) {
     return Status::VersionMismatch("RunUdfChain Version Mismatch");
   }
   CheckpointUtils ckpt(checkpoint, info);
-  return ckpt.SaveVariables(id_, storage_manager_->Internal());
+  return ckpt.SaveVariables(id_, save_mode, storage_manager_->Internal());
 }
 
 Status Server::Restore(Version ver, const std::string& checkpoint, const VariableInfoCollection& from, const VariableInfoCollection& to) {

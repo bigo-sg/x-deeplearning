@@ -119,13 +119,17 @@ Status SchedulerImpl::GetClusterInfo(const Version version, ClusterInfo* result)
 }
 
 void SchedulerImpl::Save(Version version, const string& checkpoint,
-                         OpCallback cb) {
-  AssignOp(kSave, version, checkpoint, cb);
+    uint64_t save_mode, OpCallback cb) {
+  auto sopt = new SaveOpOption();
+  sopt->save_mode = save_mode;
+  std::shared_ptr<OpOption> opt(sopt);
+  
+  AssignOp(kSave, version, checkpoint, opt, cb);
 }
 
 void SchedulerImpl::Restore(Version version, const string& checkpoint,
                             OpCallback cb) {
-  AssignOp(kRestore, version, checkpoint, cb);
+  AssignOp(kRestore, version, checkpoint, nullptr, cb);
 }
 
 void SchedulerImpl::TriggerStreamingDense(Version version, OpCallback cb) {
@@ -257,7 +261,7 @@ void SchedulerImpl::MainLoop() {
     switch (op_code_) {
     case kSave: {
       LOG(INFO) << "Saving checkpoint :" << op_checkpoint_;
-      Status st = InternalSave(op_checkpoint_);
+      Status st = InternalSave(op_checkpoint_, std::dynamic_pointer_cast<SaveOpOption>(op_option_));
       LOG(INFO) << "Saving checkpoint :" << op_checkpoint_ << ", Get Status: " << st.ToString();
       op_cb_(st);
       break;
@@ -279,6 +283,7 @@ void SchedulerImpl::MainLoop() {
       unique_lock<mutex> lock(m_);
       op_code_ = kNone;
       op_checkpoint_ = "";
+      op_option_ = nullptr;
       op_cb_ = [](const Status&){
         LOG(FATAL) << "Invalid Op Call for NoneOp";
         abort();
@@ -317,7 +322,7 @@ void SchedulerImpl::WaitForOp() {
   op_cv_.wait(lock, [&] { return op_code_ != kNone || !ready_ || stopped_; });
 }
 
-void SchedulerImpl::AssignOp(OpCode code, Version version,
+void SchedulerImpl::AssignOp(OpCode code, Version version, std::shared_ptr<OpOption> opt,
                              const string& checkpoint, OpCallback cb) {
   unique_lock<mutex> lock(m_);
   if (!ready_) {
@@ -341,6 +346,7 @@ void SchedulerImpl::AssignOp(OpCode code, Version version,
     op_code_ = code;
     op_checkpoint_ = checkpoint;
     op_cb_ = cb;
+    op_option_ = opt;
     op_cv_.notify_all();
     LOG(INFO) << "Schedule a new op to " << OpName(code) << 
       " checkpoint:" << checkpoint;
@@ -486,7 +492,7 @@ Status SchedulerImpl::InternalRestore(const string& checkpoint) {
   return collect;
 }
 
-Status SchedulerImpl::InternalSave(const string& checkpoint) {
+Status SchedulerImpl::InternalSave(const string& checkpoint, std::shared_ptr<SaveOpOption> opt) {
   std::promise<Status> result;
   std::mutex mu;
   Status collect;
@@ -520,7 +526,7 @@ Status SchedulerImpl::InternalSave(const string& checkpoint) {
       }
     }
 
-    if(checkpoint_path_.size() > 0 && checkpoint.size() > 0){
+    if(checkpoint_path_.size() > 0 && checkpoint.size() > 0 && (opt->save_mode & kSaveBinEmb)){
       do{
         std::string emb_bin_dir = checkpoint_path_ + "/" + checkpoint + "/emb_bin";
         std::vector<std::string> emb_bin_files;
@@ -548,7 +554,7 @@ Status SchedulerImpl::InternalSave(const string& checkpoint) {
       ServerId id = server.GetId();
       ServerType server_type = server.GetServerType();
       if (server_type == 0) {
-        service_->ServerSave(server_type, id, version_, checkpoint_path_ + "/" + checkpoint, variable_info_, [id, &result, &mu, &collect, &count_down](Status st) {
+        service_->ServerSave(server_type, id, version_, checkpoint_path_ + "/" + checkpoint, opt.get(), variable_info_, [id, &result, &mu, &collect, &count_down](Status st) {
           std::unique_lock<std::mutex> lock(mu);
           if (!st.IsOk() && collect.IsOk()) {
             collect = st;

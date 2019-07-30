@@ -35,7 +35,7 @@ class BaseClient {
   BaseClient() {}
   virtual ~BaseClient() {}
   virtual Status Init() = 0;
-  virtual void Save(const std::string& name, const Callback& cb) = 0;
+  virtual void Save(const std::string& name, uint64_t save_mode, const Callback& cb) = 0;
   virtual void Restore(const std::string& name, const Callback& cb) = 0;
   virtual void TriggerStreamingModelDense(const Callback& cb) = 0;
   virtual void TriggerStreamingModelSparse(const Callback& cb) = 0;

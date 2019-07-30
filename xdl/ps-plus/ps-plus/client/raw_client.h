@@ -60,7 +60,7 @@ class RawClient {
 
   Status RegisterVariable(const std::string& name, const VariableInfo& info);
 
-  void Save(const std::string& name, const Callback& cb);
+  void Save(const std::string& name, uint64_t save_mode, const Callback& cb);
   void Restore(const std::string& name, const Callback& cb);
   void TriggerStreamingModelDense(const Callback& cb);
   void TriggerStreamingModelSparse(const Callback& cb);

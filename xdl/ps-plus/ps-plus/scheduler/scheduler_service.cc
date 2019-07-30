@@ -188,13 +188,15 @@ void SchedulerService::ServerSave(
     int server_type,
     int server_id,
     Version version,
+    const SaveOpOption *opt,
     const std::string& checkpoint,
     const std::vector<VariableInfo>& info,
     std::function<void(Status)> cb) {
   std::vector<Data*> datas = {
     new WrapperData<Version>(version),
     new WrapperData<std::string>(checkpoint),
-    new WrapperData<VariableInfoCollection>(VariableInfoCollection{.infos = info})
+    new WrapperData<VariableInfoCollection>(VariableInfoCollection{.infos = info}),
+    new WrapperData<uint64_t>(opt->save_mode),
   };
   seastar_lib_->Request(server_offset_[server_type] + server_id, func_ids::kServerSave, datas,
     new CallBackClosure([cb](const SeastarStatus& sst, const std::vector<ps::Data*>& datas) {
@@ -343,21 +345,24 @@ void SchedulerService::GetVersion(const std::vector<Data*>& inputs, std::vector<
 }
 
 void SchedulerService::Save(const std::vector<Data*>& inputs, std::vector<Data*>* outputs, ps::service::seastar::DoneClosure* done) {
-  if (inputs.size() != 2) {
-    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SchedulerService Save: Need 2 inputs")));
+  if (inputs.size() != 4) {
+    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SchedulerService Save: Need 4 inputs")));
     done->Run();
     return;
   }
   WrapperData<Version>* ver = dynamic_cast<WrapperData<Version>*>(inputs[0]);
   WrapperData<std::string>* data_ver = dynamic_cast<WrapperData<std::string>*>(inputs[1]);
+  WrapperData<uint64_t>* save_mode = dynamic_cast<WrapperData<uint64_t>*>(inputs[2]);
   if (ver == nullptr || data_ver == nullptr) {
     outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SchedulerService Save: Input Type Error")));
     done->Run();
     return;
   }
-  impl_->Save(ver->Internal(), data_ver->Internal(), [outputs, done](const Status& st) {
-    outputs->push_back(new WrapperData<Status>(st));
-    done->Run();
+  impl_->Save(ver->Internal(), data_ver->Internal(),
+    save_mode->Internal(),
+    [outputs, done](const Status& st) {
+      outputs->push_back(new WrapperData<Status>(st));
+      done->Run();
   });
 }
 
