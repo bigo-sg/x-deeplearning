@@ -75,7 +75,7 @@ TEST(CheckpointUtilsTest, CheckpointUtilsTest) {
         .args = {{"save", "false"}}}
     }};
   CheckpointUtils ckpt("memory://save", infos);
-  EXPECT_TRUE(ckpt.SaveVariables(1, a).IsOk());
+  EXPECT_TRUE(ckpt.SaveVariables(1, 0, a).IsOk());
   EXPECT_TRUE(ckpt.LoadVariables(infos, 1, &b).IsOk());
   EXPECT_TRUE(b.find("x") != b.end());
   EXPECT_TRUE(b.find("y") != b.end());

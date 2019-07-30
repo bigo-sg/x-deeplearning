@@ -114,8 +114,8 @@ void RawClient::Process(
   }
 }
 
-void RawClient::Save(const std::string& name, const Callback& cb) {
-  client_wrapper_->Save(name, cb);
+void RawClient::Save(const std::string& name, uint64_t save_mode, const Callback& cb) {
+  client_wrapper_->Save(name, save_mode, cb);
 }
 
 void RawClient::Restore(const std::string& name, const Callback& cb) {

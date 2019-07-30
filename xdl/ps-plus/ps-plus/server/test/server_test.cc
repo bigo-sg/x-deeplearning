@@ -104,7 +104,7 @@ TEST(ServerTest, ServerTest) {
   EXPECT_EQ(st, Status::Ok());
 
   VariableInfoCollection vic;
-  st = server.Save(0, "hello", vic);
+  st = server.Save(0, "hello", 0, vic);
   EXPECT_EQ(st, Status::Ok());
 
   VariableInfoCollection from, to;

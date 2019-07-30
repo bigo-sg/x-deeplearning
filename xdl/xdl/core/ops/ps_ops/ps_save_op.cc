@@ -25,7 +25,7 @@ limitations under the License.
 namespace xdl {
 
 class PsSaveOp : public xdl::OpKernelAsync {
- public:
+public:
   Status Init(OpKernelConstruction* ctx) override {
     return Status::Ok();
   }
@@ -36,17 +36,28 @@ class PsSaveOp : public xdl::OpKernelAsync {
     Tensor t_ckpt_version;
     XDL_CHECK_STATUS_ASYNC(ctx->GetInput(0, &t_ckpt_version), done);
     std::string ckpt_version = t_ckpt_version.Scalar<std::string>();
+    
+    Tensor t_save_mode;
+    XDL_CHECK_STATUS_ASYNC(ctx->GetInput(1, &t_save_mode), done);
+    uint64_t save_mode = t_save_mode.Scalar<uint64_t>();
+
     auto cb = [ctx, done](const ps::Status& st) {
       XDL_CHECK_STATUS_ASYNC(PS2XDL::ConvertStatus(st), done);
       done(Status::Ok());
     };
 
-    client->Save(ckpt_version, cb);
+    client->Save(ckpt_version, save_mode, cb);
   }
 };
 
+/**
+ * save_mode: bit mark. 0x01 save binary embedding
+ * click_show_threshold: use to filt out embedding ids by click show stat.
+ *     click_show_threshold = -1: defuatl value. not filt
+*/
 XDL_DEFINE_OP(PsSaveOp)
-  .Input("ckpt_version", DataType::kInt8);
+  .Input("ckpt_version", DataType::kInt8)
+  .Input("save_mode", DataType::kInt64);
 
 XDL_REGISTER_KERNEL(PsSaveOp, PsSaveOp).Device("CPU");
 

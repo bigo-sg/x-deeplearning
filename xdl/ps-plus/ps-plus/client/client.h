@@ -49,8 +49,8 @@ class Client: public BaseClient {
     return raw_->Process(udf, var_name, datas, splitter, combiner, results, cb);
   }
 
-  void Save(const std::string& name, const Callback& cb) override {
-    return raw_->Save(name, cb);
+  void Save(const std::string& name, uint64_t save_mode, const Callback& cb) override {
+    return raw_->Save(name, save_mode, cb);
   }
 
   void Restore(const std::string& name, const Callback& cb) override {

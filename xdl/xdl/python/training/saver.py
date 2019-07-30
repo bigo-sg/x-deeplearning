@@ -91,12 +91,12 @@ class Saver(object):
         if self._ckpt_dir is None:
             raise ValueError('must specify ckpt_dir arg in cmdline')
         self._graph_def = _graphdef_to_pb(current_graph()._graph_def)
-    def save(self, version):
-        execute(self.save_op(version))
+    def save(self, version, save_mode = 0x01):
+        execute(self.save_op(version, save_mode))
     def restore(self, version):
         execute(self.restore_op(version))
-    def save_op(self, version):
-        return xdl.ps_save_op(_string_to_int8(version))
+    def save_op(self, version, save_mode):
+        return xdl.ps_save_op(_string_to_int8(version), save_mode)
     def restore_op(self, version):
         return xdl.ps_restore_op(_string_to_int8(version))
     def tag_reader_input(self, reader):

@@ -204,19 +204,21 @@ void ServerService::Process(const std::vector<Data*>& inputs, std::vector<Data*>
 }
 
 void ServerService::Save(const std::vector<Data*>& inputs, std::vector<Data*>* outputs) {
-  if (inputs.size() != 3) {
-    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SaveFunc: Need 3 inputs")));
+  if (inputs.size() != 4) {
+    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SaveFunc: Need 4 inputs")));
     return;
   }
   WrapperData<Version>* ver = dynamic_cast<WrapperData<Version>*>(inputs[0]);
   WrapperData<std::string>* checkpoint = dynamic_cast<WrapperData<std::string>*>(inputs[1]);
   WrapperData<VariableInfoCollection>* info = dynamic_cast<WrapperData<VariableInfoCollection>*>(inputs[2]);
+  WrapperData<uint64_t>* save_mode = dynamic_cast<WrapperData<uint64_t>*>(inputs[3]);
   if (ver == nullptr || checkpoint == nullptr || info == nullptr) {
     outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SaveFunc: Input Type Error")));
     return;
   }
   LOG(INFO) << "Saving Checkpoint " << checkpoint->Internal();
-  Status st = server_->Save(ver->Internal(), checkpoint->Internal(), info->Internal());
+  Status st = server_->Save(ver->Internal(), checkpoint->Internal(), 
+      save_mode->Internal(), info->Internal());
   outputs->push_back(new WrapperData<Status>(st));
   LOG(INFO) << "Saving Checkpoint Done " << checkpoint->Internal();
   return;
