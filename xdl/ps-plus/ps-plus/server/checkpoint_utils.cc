@@ -431,9 +431,9 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
       s->Write(buf_ptr, piece_size);
     } while (0));
   }
-  LOG(INFO) << raw_file_name << " id filt: " << std::to_string(var->hash_slicer.items.size()) 
-      << " " << std::to_string(filtout_num);
   s->Close();
+  std::cout << raw_file_name << " filtout. original " << std::to_string(var->hash_slicer.items.size()) 
+      << " drop " << std::to_string(filtout_num) << "\n";
 }
 Status CheckpointUtils::SaveSparseVariableBinary(const std::string &var_name, VariableStruct *var, size_t part){
   struct timeval ts0, ts1;
