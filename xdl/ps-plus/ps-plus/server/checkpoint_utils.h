@@ -51,7 +51,7 @@ class CheckpointUtils {
   static Status StructToVariable(const VariableStruct& vs, std::unique_ptr<Variable>* var, const VariableInfo& info, size_t part);
   static Status VariableToStruct(const std::unique_ptr<Variable>& var, VariableStruct* vs);
   static Status LoadVariable(FileSystem::ReadStream* s, VariableStruct* var);
-  static Status SaveVariable(FileSystem::WriteStream* s, VariableStruct* var,  float click_show_threshold);
+  static Status SaveVariable(FileSystem::WriteStream* s, VariableStruct* var);
   static Status LoadTensor(FileSystem::ReadStream* s, Tensor* data);
   static Status SaveTensor(FileSystem::WriteStream* s, const Tensor& data);
   static std::unordered_map<std::string, Variable::Slot> CloneSlots(const std::unordered_map<std::string, Variable::Slot>& slots);

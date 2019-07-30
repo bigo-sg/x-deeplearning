@@ -27,7 +27,6 @@ namespace xdl {
 class PsSaveOp : public xdl::OpKernelAsync {
 public:
   Status Init(OpKernelConstruction* ctx) override {
-    XDL_CHECK_STATUS(ctx->GetAttr("save_mode", &save_mode_));
     return Status::Ok();
   }
 
@@ -37,15 +36,18 @@ public:
     Tensor t_ckpt_version;
     XDL_CHECK_STATUS_ASYNC(ctx->GetInput(0, &t_ckpt_version), done);
     std::string ckpt_version = t_ckpt_version.Scalar<std::string>();
+    
+    Tensor t_save_mode;
+    XDL_CHECK_STATUS_ASYNC(ctx->GetInput(1, &t_save_mode), done);
+    uint64_t save_mode = t_save_mode.Scalar<uint64_t>();
+
     auto cb = [ctx, done](const ps::Status& st) {
       XDL_CHECK_STATUS_ASYNC(PS2XDL::ConvertStatus(st), done);
       done(Status::Ok());
     };
 
-    client->Save(ckpt_version, save_mode, click_show_threshold_, cb);
+    client->Save(ckpt_version, save_mode, cb);
   }
-private:
-  uint64_t save_mode_;
 };
 
 /**
@@ -55,7 +57,7 @@ private:
 */
 XDL_DEFINE_OP(PsSaveOp)
   .Input("ckpt_version", DataType::kInt8)
-  .Attr("save_mode", AttrValue::kFloat);
+  .Input("save_mode", DataType::kInt64);
 
 XDL_REGISTER_KERNEL(PsSaveOp, PsSaveOp).Device("CPU");
 

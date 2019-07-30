@@ -243,7 +243,7 @@ Status LocalServer::Save(const std::string& ckpt_version) {
 
   std::string real_ckpt_path = ckpt_path_ + "/" + ckpt_version;
   CheckpointUtils ckpt_utils(real_ckpt_path, info);  
-  PS_CHECK_STATUS(ckpt_utils.SaveVariables(0, storage_manager_->Internal()));
+  PS_CHECK_STATUS(ckpt_utils.SaveVariables(0, 0x01, storage_manager_->Internal()));
   std::vector<std::string> checkpoints;
   {
     std::unique_ptr<FileSystem::ReadStream> s;

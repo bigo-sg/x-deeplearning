@@ -54,7 +54,7 @@ class LocalClient: public BaseClient {
                std::vector<std::unique_ptr<Data>>* results,
                const Callback& cb);
 
-  void Save(const std::string& name, const Callback& cb) override {
+  void Save(const std::string& name, uint64_t save_mode, const Callback& cb) override {
     Status st = local_server_->Save(name);
     cb(st);
   }

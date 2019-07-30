@@ -151,7 +151,7 @@ class MockClientWrapper : public ClientWrapper {
   Status ConnectToCluster(const std::string& addr) {
     return Status::Ok();
   }
-  void Save(const std::string& version, const Callback& cb) {
+  void Save(const std::string& version, uint64_t save_mode, const Callback& cb) {
     ReturnAsync(Status::Ok(), cb);
     return;
   };
@@ -519,7 +519,7 @@ TEST(ClientTest, OtherTest) {
   client->Init();
 
   std::promise<Status> st_promise;
-  client->Save("version_test", [&st_promise](Status st){
+  client->Save("version_test", 0x01, [&st_promise](Status st){
     st_promise.set_value(st);
   });
   Status st = st_promise.get_future().get();
@@ -685,7 +685,7 @@ TEST(LocalClientTest, LocalTest) {
   client->Init();
 
   std::promise<Status> st_promise;
-  client->Save("version_test", [&st_promise](Status st){
+  client->Save("version_test", 0, [&st_promise](Status st){
     st_promise.set_value(st);
   });
   Status st = st_promise.get_future().get();

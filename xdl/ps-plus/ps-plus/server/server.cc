@@ -70,7 +70,7 @@ Status Server::RunUdfChain(Version ver, size_t udf, const std::string& variable_
 }
 
 Status Server::Save(Version ver, const std::string& checkpoint, 
-  uint64_t save_mode, float click_show_threshold, const VariableInfoCollection& info) {
+                    uint64_t save_mode, const VariableInfoCollection& info) {
   QRWLocker lock(server_lock_, QRWLocker::kSimpleRead);
   if (ver != ver_) {
     return Status::VersionMismatch("RunUdfChain Version Mismatch");

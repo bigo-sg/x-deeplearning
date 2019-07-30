@@ -322,8 +322,8 @@ void SchedulerImpl::WaitForOp() {
   op_cv_.wait(lock, [&] { return op_code_ != kNone || !ready_ || stopped_; });
 }
 
-void SchedulerImpl::AssignOp(OpCode code, Version version, std::shared_ptr<OpOption> opt,
-                             const string& checkpoint, OpCallback cb) {
+void SchedulerImpl::AssignOp(OpCode code, Version version, const string& checkpoint,
+                            std::shared_ptr<OpOption> opt, OpCallback cb) {
   unique_lock<mutex> lock(m_);
   if (!ready_) {
     lock.unlock();

@@ -188,8 +188,8 @@ void SchedulerService::ServerSave(
     int server_type,
     int server_id,
     Version version,
-    const SaveOpOption *opt,
     const std::string& checkpoint,
+    const SaveOpOption *opt,
     const std::vector<VariableInfo>& info,
     std::function<void(Status)> cb) {
   std::vector<Data*> datas = {
@@ -345,8 +345,8 @@ void SchedulerService::GetVersion(const std::vector<Data*>& inputs, std::vector<
 }
 
 void SchedulerService::Save(const std::vector<Data*>& inputs, std::vector<Data*>* outputs, ps::service::seastar::DoneClosure* done) {
-  if (inputs.size() != 4) {
-    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SchedulerService Save: Need 4 inputs")));
+  if (inputs.size() != 3) {
+    outputs->push_back(new WrapperData<Status>(Status::ArgumentError("SchedulerService Save: Need 3 inputs")));
     done->Run();
     return;
   }

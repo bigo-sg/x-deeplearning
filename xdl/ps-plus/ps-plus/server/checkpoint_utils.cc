@@ -416,9 +416,13 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
   float* pscore = nullptr;
   if (fea_score) { pscore = fea_score->Raw<float>();}
 
+  uint32_t filtout_num = 0;
   for (size_t i = thread_id; i < var->hash_slicer.items.size(); i += total_threads) {
     ps::HashMapItem& item = var->hash_slicer.items[i];
-    if (pscore && pscore[item.id] < export_threshold) {continue; }
+    if (pscore && pscore[item.id] < export_threshold) {
+      filtout_num += 1;
+      continue;
+    }
     CASES(var->data.Type(),
     do {
       T* raw = var->data.Raw<T>();
@@ -427,6 +431,8 @@ static void SaveSparseVariableBinaryThread(const std::string &path,
       s->Write(buf_ptr, piece_size);
     } while (0));
   }
+  LOG(INFO) << raw_file_name << " id filt: " << std::to_string(var->hash_slicer.items.size()) 
+      << " " << std::to_string(filtout_num);
   s->Close();
 }
 Status CheckpointUtils::SaveSparseVariableBinary(const std::string &var_name, VariableStruct *var, size_t part){

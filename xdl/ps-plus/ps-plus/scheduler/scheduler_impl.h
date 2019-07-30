@@ -118,8 +118,8 @@ class SchedulerImpl {
   std::condition_variable op_cv_;
   std::string OpName(OpCode code);
   void WaitForOp();
-  void AssignOp(OpCode code, Version version, const std::string& checkpoint, std::shared_ptr<OpOption> opt,
-                OpCallback cb);
+  void AssignOp(OpCode code, Version version, const std::string& checkpoint,
+                std::shared_ptr<OpOption> opt,  OpCallback cb);
 
   void Main();
   void MainLoop();

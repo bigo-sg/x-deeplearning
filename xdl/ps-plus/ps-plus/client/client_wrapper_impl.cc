@@ -186,10 +186,11 @@ void ClientWrapperImpl::RegisterUdf(size_t server_id, const UdfChain& def, const
   client_lib_->Request(server_id + offset_[0], func_ids::kServerRegisterUdfChain, request_datas, cb_closure);
 }
 
-void ClientWrapperImpl::Save(const std::string& version, const Callback& cb) {
+void ClientWrapperImpl::Save(const std::string& version, uint64_t save_mode, const Callback& cb) {
   std::vector<Data*> request_datas = {
     new WrapperData<Version>(scheduler_version_),
-    new WrapperData<std::string>(version)
+    new WrapperData<std::string>(version),
+    new WrapperData<uint64_t>(save_mode)
   };
 
   CallBackClosure* cb_closure = new CallBackClosure([cb](const SeastarStatus& sst, const std::vector<Data*>& response) {
