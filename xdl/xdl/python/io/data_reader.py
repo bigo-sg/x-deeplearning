@@ -1,17 +1,3 @@
-# Copyright (C) 2016-2018 Alibaba Group Holding Limited
-# 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 from datetime import datetime
 import sys
 import os
@@ -34,6 +20,7 @@ class myThread (threading.Thread):
    def run(self):
       print "Starting " + self.name+ " tid "+ str(self.threadID)
       for i in range(len(self.input[self.threadID])):
+         print self.input[self.threadID][i]+"  "+str(self.threadID)
          file_parsing(self.input[self.threadID][i],self._converter_file,self.threadID)
      
 def file_parsing(path,converter_file, tid):
@@ -56,7 +43,7 @@ def file_parsing(path,converter_file, tid):
      local_path = "{}/{}".format(currentDirectory,gz_filename.strip(".gz"))
 
      script_cmd = "python {}/{} {}".format(currentDirectory,converter_file,local_path)
-     print script_cmd
+     print script_cmd+" "+str(tid)
      p=exec_cmd(script_cmd)
      if p==0:
         print str(tid)+"finish task"
@@ -156,13 +143,20 @@ class DataReader(DataIO):
             threads_list.append(myThread(i, thread_input,self._converter_file))
                 
             threads_list[i].start()
-          for i in range(curr_thread):
+          for i in range(curr_thread+1):
             threads_list[i].join()
 
           
         print "end"+"  "+str(datetime.now())      
         print('data paths:', shard_paths)
+        for i in shard_paths:
+          #st = os.stat(i)
+          if ((curr_thread>=0)):
+            st = os.stat(i)
+            if (st.st_size<=0):
+              print i+ "  size error"
         self.add_path(shard_paths)
+       
         if self._meta is not None:
             self.set_meta(self._meta)
     def _decode_path(self, path):
@@ -206,4 +200,3 @@ class DataReader(DataIO):
             fpath = path
 
         return fs_type, namenode, fpath
-
